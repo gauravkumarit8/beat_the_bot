@@ -64,6 +64,13 @@ void main() {
     expect(s.memoryBest, 7);
   });
 
+  test('precision best starts at zero and can be saved', () async {
+    final s = await makeService({});
+    expect(s.precisionBest, 0);
+    await s.setPrecisionBest(88);
+    expect(s.precisionBest, 88);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

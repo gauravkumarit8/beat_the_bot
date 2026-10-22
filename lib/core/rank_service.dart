@@ -59,6 +59,11 @@ class RankService {
   int get memoryBest => _prefs.getInt('memoryBest') ?? 0;
   Future<void> setMemoryBest(int tiles) => _prefs.setInt('memoryBest', tiles);
 
+  /// Best average accuracy (percent) in Precision mode.
+  int get precisionBest => _prefs.getInt('precisionBest') ?? 0;
+  Future<void> setPrecisionBest(int percent) =>
+      _prefs.setInt('precisionBest', percent);
+
   String? get _lastPlayed => _prefs.getString('lastPlayed');
   String? get _warmupDay => _prefs.getString('warmupDay');
 

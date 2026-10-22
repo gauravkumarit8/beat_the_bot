@@ -4,6 +4,7 @@ import '../core/ads_service.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
+import '../games/precision/precision_screen.dart';
 import '../games/reflex/reflex_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -46,6 +47,14 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
           builder: (_) => MemoryScreen(rank: widget.rank, ads: widget.ads)),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _playPrecision() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+          builder: (_) => PrecisionScreen(rank: widget.rank, ads: widget.ads)),
     );
     if (mounted) setState(() {});
   }
@@ -115,17 +124,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            const Row(
+            Row(
               children: [
                 Expanded(
                   child: _ModeCard(
                     title: 'Precision',
-                    subtitle: 'Coming soon',
+                    subtitle: 'Zed: average',
                     icon: Icons.adjust_rounded,
+                    onTap: _playPrecision,
                   ),
                 ),
-                SizedBox(width: 12),
-                Expanded(
+                const SizedBox(width: 12),
+                const Expanded(
                   child: _ModeCard(
                     title: 'Pattern',
                     subtitle: 'Coming soon',
