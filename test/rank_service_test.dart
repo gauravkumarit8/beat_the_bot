@@ -1,3 +1,4 @@
+import 'package:beat_the_bot/core/difficulty.dart';
 import 'package:beat_the_bot/core/rank_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -76,6 +77,39 @@ void main() {
     expect(s.patternBest, 0);
     await s.setPatternBest(640);
     expect(s.patternBest, 640);
+  });
+
+  test('difficulty defaults to Auto, which starts at Medium', () async {
+    final s = await makeService({});
+    expect(s.difficulty, Difficulty.auto);
+    expect(s.levelFor('reflex'), Level.medium);
+  });
+
+  test('a manual choice overrides Auto and is saved', () async {
+    final s = await makeService({});
+    await s.setDifficulty(Difficulty.hard);
+    expect(s.difficulty, Difficulty.hard);
+    expect(s.levelFor('memory'), Level.hard);
+  });
+
+  test('Auto gets harder after wins and easier after losses', () async {
+    final s = await makeService({});
+    await s.recordResult('reflex', Level.medium, true);
+    expect(s.levelFor('reflex'), Level.medium);
+    await s.recordResult('reflex', Level.medium, true);
+    expect(s.levelFor('reflex'), Level.hard);
+
+    await s.recordResult('memory', Level.medium, false);
+    await s.recordResult('memory', Level.medium, false);
+    expect(s.levelFor('memory'), Level.easy);
+    // Other games are not affected.
+    expect(s.levelFor('pattern'), Level.medium);
+  });
+
+  test('winning on Easy does not jump Auto straight to Hard', () async {
+    final s = await makeService({});
+    await s.recordResult('pattern', Level.easy, true);
+    expect(s.levelFor('pattern'), Level.medium);
   });
 
   test('daily twist is the same for the same date', () {

@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
+import '../../core/difficulty.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../widgets/difficulty_badge.dart';
 
 enum _Phase { intro, showing, input, between, matchOver }
 
@@ -24,8 +26,26 @@ class MemoryScreen extends StatefulWidget {
 
 class _MemoryScreenState extends State<MemoryScreen> {
   static const int _tiles = 9;
-  static const int _startLen = 3;
-  static const int _maxLives = 3;
+
+  late Level _level;
+
+  int get _startLen => switch (_level) {
+        Level.easy => 3,
+        Level.medium => 3,
+        Level.hard => 4,
+      };
+  int get _maxLives => switch (_level) {
+        Level.easy => 4,
+        Level.medium => 3,
+        Level.hard => 2,
+      };
+
+  /// How long each tile stays lit, in milliseconds.
+  int get _showMs => switch (_level) {
+        Level.easy => 700,
+        Level.medium => 500,
+        Level.hard => 380,
+      };
 
   final Random _rng = Random();
   int _attempt = 0;
@@ -33,9 +53,9 @@ class _MemoryScreenState extends State<MemoryScreen> {
   String _taunt = '';
 
   _Phase _phase = _Phase.intro;
-  int _len = _startLen;
+  late int _len;
   int _bestCleared = 0;
-  int _lives = _maxLives;
+  late int _lives;
   List<int> _sequence = [];
   int _inputIndex = 0;
   int? _lit;
@@ -48,6 +68,9 @@ class _MemoryScreenState extends State<MemoryScreen> {
   @override
   void initState() {
     super.initState();
+    _level = widget.rank.levelFor('memory');
+    _len = _startLen;
+    _lives = _maxLives;
     _pickZed();
   }
 
@@ -60,7 +83,13 @@ class _MemoryScreenState extends State<MemoryScreen> {
   /// Same Zed capacity for everyone on the same day (plus rematch number).
   void _pickZed() {
     final seed = DailyTwist.seedForDate(DateTime.now()) * 31 + _attempt;
-    _zedCap = 6 + Random(seed).nextInt(3);
+    final base = switch (_level) {
+      Level.easy => 4,
+      Level.medium => 6,
+      Level.hard => 8,
+    };
+    final span = _level == Level.medium ? 3 : 2;
+    _zedCap = base + Random(seed).nextInt(span);
     _taunt = 'I hold $_zedCap tiles. Show me you can hold more.';
   }
 
@@ -85,7 +114,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     for (final t in seq) {
       if (!mounted || run != _run) return;
       setState(() => _lit = t);
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(Duration(milliseconds: _showMs));
       if (!mounted || run != _run) return;
       setState(() => _lit = null);
       await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -150,6 +179,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   }
 
   Future<void> _finishMatch({required bool won}) async {
+    await widget.rank.recordResult('memory', _level, won);
     Rank? up;
     final improved = _bestCleared > widget.rank.memoryBest;
     if (improved) {
@@ -175,6 +205,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   void _rematch() {
     _run++;
     _attempt++;
+    _level = widget.rank.levelFor('memory');
     _pickZed();
     setState(() {
       _phase = _Phase.intro;
@@ -202,6 +233,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
               _hud(),
               const SizedBox(height: 16),
               _tauntBubble(),
+              const SizedBox(height: 8),
+              _badge(),
               Expanded(child: Center(child: _grid())),
               _bottomPanel(),
             ],
@@ -210,6 +243,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
       ),
     );
   }
+
+  Widget _badge() => DifficultyBadge(
+        level: _level,
+        auto: widget.rank.difficulty == Difficulty.auto,
+      );
 
   Widget _hud() {
     return Row(

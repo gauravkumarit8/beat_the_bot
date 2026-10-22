@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
+import '../../core/difficulty.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../widgets/difficulty_badge.dart';
 
 enum _Phase { ready, playing, roundOver, matchOver }
 
@@ -23,12 +25,25 @@ class PrecisionScreen extends StatefulWidget {
 
 /// Zed's accuracy: stays close to your recent average, with some wobble.
 class _ZedAccuracy {
+  _ZedAccuracy(this.level);
+
+  final Level level;
   final Random _rng = Random();
   double? _avg;
 
   int next() {
     final avg = _avg;
-    final base = avg == null ? 86.0 : (avg * 0.97).clamp(70.0, 96.0);
+    final start = switch (level) {
+      Level.easy => 80.0,
+      Level.medium => 86.0,
+      Level.hard => 92.0,
+    };
+    final factor = switch (level) {
+      Level.easy => 0.92,
+      Level.medium => 0.97,
+      Level.hard => 1.0,
+    };
+    final base = avg == null ? start : (avg * factor).clamp(70.0, 98.0);
     final jitter = (_rng.nextDouble() - 0.5) * 14;
     return (base + jitter).clamp(55.0, 99.0).round();
   }
@@ -44,10 +59,36 @@ class _ZedAccuracy {
 class _PrecisionScreenState extends State<PrecisionScreen>
     with SingleTickerProviderStateMixin {
   static const int _rounds = 5;
-  static const double _zoneFrac = 0.12;
+
+  late Level _level;
+
+  /// Width of the green zone as a fraction of the bar.
+  double get _zoneFrac => switch (_level) {
+        Level.easy => 0.16,
+        Level.medium => 0.12,
+        Level.hard => 0.08,
+      };
+
+  /// How far from the centre (as a fraction of the bar) scores 0%.
+  double get _errScale => switch (_level) {
+        Level.easy => 0.5,
+        Level.medium => 0.4,
+        Level.hard => 0.3,
+      };
+
+  int get _startMs => switch (_level) {
+        Level.easy => 1800,
+        Level.medium => 1500,
+        Level.hard => 1200,
+      };
+  int get _stepMs => switch (_level) {
+        Level.easy => 150,
+        Level.medium => 150,
+        Level.hard => 120,
+      };
 
   final Random _rng = Random();
-  final _ZedAccuracy _zed = _ZedAccuracy();
+  late _ZedAccuracy _zed;
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1500),
@@ -66,6 +107,13 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   String _taunt = 'Steady hands? I doubt it.';
 
   @override
+  void initState() {
+    super.initState();
+    _level = widget.rank.levelFor('precision');
+    _zed = _ZedAccuracy(_level);
+  }
+
+  @override
   void dispose() {
     _ctrl.dispose();
     super.dispose();
@@ -75,7 +123,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
       l.isEmpty ? 0 : (l.reduce((a, b) => a + b) / l.length).round();
 
   void _beginRound() {
-    final ms = 1500 - (_round - 1) * 150;
+    final ms = _startMs - (_round - 1) * _stepMs;
     _target = 0.15 + _rng.nextDouble() * 0.7;
     _ctrl.duration = Duration(milliseconds: ms);
     _ctrl.repeat(reverse: true);
@@ -87,7 +135,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
     _ctrl.stop();
     HapticFeedback.mediumImpact();
     final err = (_ctrl.value - _target).abs();
-    final acc = (100 * (1 - err / 0.4)).clamp(0.0, 100.0).round();
+    final acc = (100 * (1 - err / _errScale)).clamp(0.0, 100.0).round();
     final zedAcc = _zed.next();
     _zed.learn(acc);
     setState(() {
@@ -113,6 +161,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
     final you = _avg(_you);
     final zed = _avg(_zedScores);
     final won = you > zed;
+    await widget.rank.recordResult('precision', _level, won);
     Rank? up;
     final improved = you > widget.rank.precisionBest;
     if (improved) {
@@ -137,6 +186,8 @@ class _PrecisionScreenState extends State<PrecisionScreen>
 
   void _rematch() {
     _ctrl.stop();
+    _level = widget.rank.levelFor('precision');
+    _zed = _ZedAccuracy(_level);
     setState(() {
       _phase = _Phase.ready;
       _round = 1;
@@ -171,6 +222,8 @@ class _PrecisionScreenState extends State<PrecisionScreen>
               _hud(),
               const SizedBox(height: 16),
               _tauntBubble(),
+              const SizedBox(height: 8),
+              _badge(),
               Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -194,6 +247,11 @@ class _PrecisionScreenState extends State<PrecisionScreen>
       ),
     );
   }
+
+  Widget _badge() => DifficultyBadge(
+        level: _level,
+        auto: widget.rank.difficulty == Difficulty.auto,
+      );
 
   Widget _hud() {
     return Row(

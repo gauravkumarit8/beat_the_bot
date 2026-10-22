@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
+import '../../core/difficulty.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../widgets/difficulty_badge.dart';
 import '../zed_ai.dart';
 
 enum _Phase { ready, waiting, go, roundOver, matchOver }
@@ -26,7 +28,8 @@ class _ReflexScreenState extends State<ReflexScreen> {
   static const int _maxRounds = 5;
   static const int _winsNeeded = 3;
 
-  final ZedAi _zed = ZedAi();
+  late ZedAi _zed;
+  late Level _level;
   final Random _rng = Random();
   final Stopwatch _clock = Stopwatch();
   Timer? _timer;
@@ -41,6 +44,13 @@ class _ReflexScreenState extends State<ReflexScreen> {
   bool _matchWon = false;
   Rank? _rankedUp;
   String _taunt = ZedAi.opening;
+
+  @override
+  void initState() {
+    super.initState();
+    _level = widget.rank.levelFor('reflex');
+    _zed = ZedAi(level: _level);
+  }
 
   @override
   void dispose() {
@@ -101,6 +111,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
 
   Future<void> _finishMatch() async {
     final won = _youWins > _zedWins;
+    await widget.rank.recordResult('reflex', _level, won);
     Rank? up;
     if (won) up = await widget.rank.onWinAgainstZed();
     final warmupUp = await widget.rank.onWarmupDone(DateTime.now());
@@ -126,6 +137,8 @@ class _ReflexScreenState extends State<ReflexScreen> {
   }
 
   void _rematch() {
+    _level = widget.rank.levelFor('reflex');
+    _zed = ZedAi(level: _level);
     setState(() {
       _round = 1;
       _youWins = 0;
@@ -164,6 +177,8 @@ class _ReflexScreenState extends State<ReflexScreen> {
               _hud(),
               const SizedBox(height: 16),
               _tauntBubble(),
+              const SizedBox(height: 8),
+              _badge(),
               Expanded(child: Center(child: _circle())),
               _bottomPanel(),
             ],
@@ -172,6 +187,11 @@ class _ReflexScreenState extends State<ReflexScreen> {
       ),
     );
   }
+
+  Widget _badge() => DifficultyBadge(
+        level: _level,
+        auto: widget.rank.difficulty == Difficulty.auto,
+      );
 
   Widget _hud() {
     return Row(

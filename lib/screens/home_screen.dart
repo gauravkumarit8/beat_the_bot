@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/ads_service.dart';
+import '../core/difficulty.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
@@ -68,6 +69,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _setDifficulty(Difficulty d) async {
+    await widget.rank.setDifficulty(d);
+    if (mounted) setState(() {});
+  }
+
   void _watchForFreeze() {
     widget.ads?.showRewarded(
       onReward: () async {
@@ -106,6 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: Text('Watch ad: earn a streak freeze (${rank.freezes})'),
               ),
             ],
+            const SizedBox(height: 18),
+            const Text('DIFFICULTY',
+                style: TextStyle(
+                    color: AppColors.muted, letterSpacing: 1, fontSize: 13)),
+            const SizedBox(height: 10),
+            _DifficultyBar(
+              current: rank.difficulty,
+              onChanged: _setDifficulty,
+            ),
             const SizedBox(height: 18),
             const Text('PICK YOUR BATTLE',
                 style: TextStyle(
@@ -386,6 +401,74 @@ class _ReturnDialog extends StatelessWidget {
           child: const Text('LET\'S GO'),
         ),
       ],
+    );
+  }
+}
+
+class _DifficultyBar extends StatelessWidget {
+  const _DifficultyBar({required this.current, required this.onChanged});
+
+  final Difficulty current;
+  final ValueChanged<Difficulty> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final hint = current == Difficulty.auto
+        ? 'Auto adjusts to your wins and losses in each game.'
+        : 'Zed plays at ${current.label} level in every game.';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (final d in Difficulty.values)
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      right: d == Difficulty.values.last ? 0 : 8),
+                  child: _chip(d),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(hint,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _chip(Difficulty d) {
+    final selected = d == current;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? AppColors.lime : AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => onChanged(d),
+          child: SizedBox(
+            height: 44,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    d.label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: selected ? AppColors.bg : AppColors.text,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

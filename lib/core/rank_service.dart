@@ -4,6 +4,8 @@
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'difficulty.dart';
+
 enum Rank { rookie, sharp, elite, master, legend }
 
 /// Minimum rank points (RP) needed for each rank.
@@ -68,6 +70,53 @@ class RankService {
   int get patternBest => _prefs.getInt('patternBest') ?? 0;
   Future<void> setPatternBest(int score) =>
       _prefs.setInt('patternBest', score);
+
+  // ---- Difficulty ---------------------------------------------------------
+
+  /// The player's choice. Defaults to Auto.
+  Difficulty get difficulty {
+    final saved = _prefs.getString('difficulty');
+    return Difficulty.values.firstWhere(
+      (d) => d.name == saved,
+      orElse: () => Difficulty.auto,
+    );
+  }
+
+  Future<void> setDifficulty(Difficulty d) =>
+      _prefs.setString('difficulty', d.name);
+
+  /// 0 = easy, 1 = medium, 2 = hard. Moves with wins and losses per game.
+  double _autoLevel(String game) => _prefs.getDouble('auto_$game') ?? 1.0;
+
+  /// The level Zed plays at for [game], honouring the player's choice.
+  Level levelFor(String game) {
+    switch (difficulty) {
+      case Difficulty.easy:
+        return Level.easy;
+      case Difficulty.medium:
+        return Level.medium;
+      case Difficulty.hard:
+        return Level.hard;
+      case Difficulty.auto:
+        final v = _autoLevel(game);
+        if (v < 0.67) return Level.easy;
+        if (v < 1.33) return Level.medium;
+        return Level.hard;
+    }
+  }
+
+  /// Call after every finished match so Auto learns from the player's record.
+  /// The change is anchored to the level that was actually played.
+  Future<void> recordResult(String game, Level played, bool won) async {
+    final old = _autoLevel(game);
+    final anchor = played.index.toDouble();
+    var next = won
+        ? (old > anchor ? old : anchor) + 0.3
+        : (old < anchor ? old : anchor) - 0.3;
+    if (next < 0) next = 0;
+    if (next > 2) next = 2;
+    await _prefs.setDouble('auto_$game', next);
+  }
 
   String? get _lastPlayed => _prefs.getString('lastPlayed');
   String? get _warmupDay => _prefs.getString('warmupDay');

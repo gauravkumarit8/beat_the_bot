@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
+import '../../core/difficulty.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../widgets/difficulty_badge.dart';
 import 'pattern_generator.dart';
 
 enum _Phase { ready, asking, revealed, matchOver }
@@ -25,8 +27,27 @@ class _PatternScreenState extends State<PatternScreen>
     with SingleTickerProviderStateMixin {
   static const int _rounds = 5;
 
+  late Level _level;
+
   /// Chance that Zed solves each round (he gets worse as puzzles get harder).
-  static const List<double> _zedAccuracy = [0.95, 0.9, 0.8, 0.65, 0.5];
+  List<double> get _zedAccuracy => switch (_level) {
+        Level.easy => const [0.9, 0.8, 0.65, 0.5, 0.4],
+        Level.medium => const [0.95, 0.9, 0.8, 0.65, 0.5],
+        Level.hard => const [0.98, 0.95, 0.9, 0.8, 0.7],
+      };
+
+  /// Which puzzle difficulty (1 to 5) is used in each of the five rounds.
+  List<int> get _puzzleLevels => switch (_level) {
+        Level.easy => const [1, 1, 2, 2, 3],
+        Level.medium => const [1, 2, 3, 4, 5],
+        Level.hard => const [2, 3, 4, 5, 5],
+      };
+
+  Duration get _timeLimit => switch (_level) {
+        Level.easy => const Duration(seconds: 15),
+        Level.medium => const Duration(seconds: 12),
+        Level.hard => const Duration(seconds: 9),
+      };
 
   final Random _rng = Random();
   late final PatternGenerator _gen = PatternGenerator(_rng);
@@ -52,6 +73,8 @@ class _PatternScreenState extends State<PatternScreen>
   @override
   void initState() {
     super.initState();
+    _level = widget.rank.levelFor('pattern');
+    _ctrl.duration = _timeLimit;
     _ctrl.addStatusListener((status) {
       if (status == AnimationStatus.completed && _phase == _Phase.asking) {
         _answer(null);
@@ -67,7 +90,7 @@ class _PatternScreenState extends State<PatternScreen>
 
   void _startQuestion() {
     setState(() {
-      _puzzle = _gen.generate(_round);
+      _puzzle = _gen.generate(_puzzleLevels[_round - 1]);
       _picked = null;
       _timedOut = false;
       _phase = _Phase.asking;
@@ -112,6 +135,7 @@ class _PatternScreenState extends State<PatternScreen>
 
   Future<void> _finish() async {
     final won = _youTotal > _zedTotal;
+    await widget.rank.recordResult('pattern', _level, won);
     Rank? up;
     final improved = _youTotal > widget.rank.patternBest;
     if (improved) {
@@ -136,6 +160,8 @@ class _PatternScreenState extends State<PatternScreen>
 
   void _rematch() {
     _ctrl.stop();
+    _level = widget.rank.levelFor('pattern');
+    _ctrl.duration = _timeLimit;
     setState(() {
       _phase = _Phase.ready;
       _round = 1;
@@ -174,7 +200,9 @@ class _PatternScreenState extends State<PatternScreen>
               _hud(),
               const SizedBox(height: 16),
               _tauntBubble(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              _badge(),
+              const SizedBox(height: 8),
               _timerBar(),
               Expanded(child: Center(child: _sequence())),
               _options(),
@@ -186,6 +214,11 @@ class _PatternScreenState extends State<PatternScreen>
       ),
     );
   }
+
+  Widget _badge() => DifficultyBadge(
+        level: _level,
+        auto: widget.rank.difficulty == Difficulty.auto,
+      );
 
   Widget _hud() {
     return Row(
