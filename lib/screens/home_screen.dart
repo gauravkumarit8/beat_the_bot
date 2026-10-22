@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../core/ads_service.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
 import '../games/reflex/reflex_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.rank});
+  const HomeScreen({super.key, required this.rank, this.ads});
 
   final RankService rank;
+  final AdsService? ads;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -34,16 +36,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _playReflex() async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => ReflexScreen(rank: widget.rank)),
+      MaterialPageRoute<void>(builder: (_) => ReflexScreen(rank: widget.rank, ads: widget.ads)),
     );
     if (mounted) setState(() {});
   }
 
+  void _watchForFreeze() {
+    widget.ads?.showRewarded(
+      onReward: () async {
+        await widget.rank.addFreeze();
+        if (mounted) setState(() {});
+      },
+      onNotReady: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ad not ready yet. Try again in a moment.')),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ads = widget.ads;
     final rank = widget.rank;
     final twist = DailyTwist.forDate(DateTime.now());
     return Scaffold(
+      bottomNavigationBar: ads == null ? null : AdBanner(ads: ads),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
@@ -53,6 +71,14 @@ class _HomeScreenState extends State<HomeScreen> {
             const _ZedCard(),
             const SizedBox(height: 18),
             _TodayCard(twist: twist, rank: rank),
+            if (ads != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _watchForFreeze,
+                icon: const Icon(Icons.ac_unit_rounded),
+                label: Text('Watch ad: earn a streak freeze (${rank.freezes})'),
+              ),
+            ],
             const SizedBox(height: 18),
             const Text('PICK YOUR BATTLE',
                 style: TextStyle(

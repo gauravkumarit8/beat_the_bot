@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/ads_service.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../zed_ai.dart';
@@ -12,9 +13,10 @@ enum _Phase { ready, waiting, go, roundOver, matchOver }
 
 /// Best of five: first to three round wins beats Zed.
 class ReflexScreen extends StatefulWidget {
-  const ReflexScreen({super.key, required this.rank});
+  const ReflexScreen({super.key, required this.rank, this.ads});
 
   final RankService rank;
+  final AdsService? ads;
 
   @override
   State<ReflexScreen> createState() => _ReflexScreenState();
@@ -103,6 +105,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
     if (won) up = await widget.rank.onWinAgainstZed();
     final warmupUp = await widget.rank.onWarmupDone(DateTime.now());
     up ??= warmupUp;
+    widget.ads?.onMatchFinished();
     if (!mounted) return;
     setState(() {
       _matchWon = won;
@@ -297,10 +300,19 @@ class _ReflexScreenState extends State<ReflexScreen> {
                       color: AppColors.amber, fontWeight: FontWeight.w700)),
             ],
             const SizedBox(height: 16),
-            FilledButton(onPressed: _rematch, child: const Text('REMATCH')),
+            FilledButton(
+              onPressed: () {
+                widget.ads?.showInterstitialIfDue();
+                _rematch();
+              },
+              child: const Text('REMATCH'),
+            ),
             const SizedBox(height: 10),
             OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                widget.ads?.showInterstitialIfDue();
+                Navigator.of(context).pop();
+              },
               child: const Text('BACK TO HOME'),
             ),
           ],

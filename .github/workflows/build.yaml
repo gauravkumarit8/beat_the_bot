@@ -34,30 +34,25 @@ jobs:
         run: flutter --version
 
       - name: Generate Android scaffold (only if android/ is missing)
-        id: scaffold
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android --org com.grv --project-name beat_the_bot /tmp/scaffold
             cp -r /tmp/scaffold/android ./android
-            echo "generated=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload Android scaffold
-        if: steps.scaffold.outputs.generated == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-scaffold
-          path: android/
-          retention-days: 7
+      - name: Patch AndroidManifest for AdMob (safe to repeat)
+        run: python3 tools/patch_android.py
 
-      - name: Commit generated Android project to the repo
-        if: steps.scaffold.outputs.generated == 'true' && github.event_name != 'pull_request'
+      - name: Commit Android changes back to the repo
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f android
-          git commit -m "chore: add generated Android project" || echo "Nothing to commit"
-          git push || echo "Push skipped"
+          if [ -n "$(git status --porcelain android)" ]; then
+            git add -f android
+            git commit -m "chore: update generated Android project"
+            git push || echo "Push skipped"
+          fi
 
       - name: Get packages
         run: flutter pub get
