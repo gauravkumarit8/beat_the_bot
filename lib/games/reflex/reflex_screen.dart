@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
@@ -73,15 +73,15 @@ class _ReflexScreenState extends State<ReflexScreen> {
   void _onTap() {
     switch (_phase) {
       case _Phase.ready:
-        HapticFeedback.selectionClick();
+        Haptics.selection();
         _startRound();
       case _Phase.waiting:
-        HapticFeedback.heavyImpact();
+        Haptics.heavy();
         _timer?.cancel();
         _endRound(null);
       case _Phase.go:
         _clock.stop();
-        HapticFeedback.mediumImpact();
+        Haptics.medium();
         _endRound(_clock.elapsedMilliseconds);
       case _Phase.roundOver:
       case _Phase.matchOver:

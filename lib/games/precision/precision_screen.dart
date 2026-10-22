@@ -1,10 +1,10 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
@@ -147,7 +147,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   void _onTap() {
     if (_phase != _Phase.playing) return;
     _ctrl.stop();
-    HapticFeedback.mediumImpact();
+    Haptics.medium();
     final err = (_ctrl.value - _target).abs();
     final acc = (100 * (1 - err / _errScale)).clamp(0.0, 100.0).round();
     final zedAcc = _zed.next();

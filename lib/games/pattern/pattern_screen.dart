@@ -1,10 +1,10 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
@@ -122,9 +122,9 @@ class _PatternScreenState extends State<PatternScreen>
     final zedCorrect = _rng.nextDouble() < _zedAccuracy[_round - 1];
     final zedGain = zedCorrect ? 110 + _rng.nextInt(30) : 0;
     if (correct) {
-      HapticFeedback.selectionClick();
+      Haptics.selection();
     } else {
-      HapticFeedback.heavyImpact();
+      Haptics.heavy();
     }
     setState(() {
       _picked = option;

@@ -6,6 +6,7 @@ import '../core/rank_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
 import 'gauntlet_screen.dart';
+import 'settings_screen.dart';
 import '../games/pattern/pattern_screen.dart';
 import '../games/precision/precision_screen.dart';
 import '../games/reflex/reflex_screen.dart';
@@ -70,6 +71,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+          builder: (_) => SettingsScreen(rank: widget.rank)),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<void> _playGauntlet() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -108,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            _TopRow(rank: rank),
+            _TopRow(rank: rank, onSettings: _openSettings),
             const SizedBox(height: 18),
             const _ZedCard(),
             const SizedBox(height: 18),
@@ -191,9 +200,10 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _TopRow extends StatelessWidget {
-  const _TopRow({required this.rank});
+  const _TopRow({required this.rank, required this.onSettings});
 
   final RankService rank;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -226,6 +236,11 @@ class _TopRow extends StatelessWidget {
                 style: const TextStyle(
                     color: AppColors.amber, fontWeight: FontWeight.w700)),
           ],
+        ),
+        IconButton(
+          tooltip: 'Settings',
+          onPressed: onSettings,
+          icon: const Icon(Icons.settings_rounded, color: AppColors.muted),
         ),
       ],
     );

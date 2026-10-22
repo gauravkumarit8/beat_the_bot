@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
@@ -140,7 +140,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   void _onTile(int i) {
     if (_phase != _Phase.input) return;
     if (i == _sequence[_inputIndex]) {
-      HapticFeedback.selectionClick();
+      Haptics.selection();
       setState(() {
         _lit = i;
         _inputIndex++;
@@ -150,7 +150,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
       });
       if (_inputIndex >= _len) _levelCleared();
     } else {
-      HapticFeedback.heavyImpact();
+      Haptics.heavy();
       _wrongTap(i);
     }
   }

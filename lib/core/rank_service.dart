@@ -85,6 +85,22 @@ class RankService {
   Future<void> setPatternBest(int score) =>
       _prefs.setInt('patternBest', score);
 
+  // ---- Settings -----------------------------------------------------------
+
+  bool get vibrationOn => _prefs.getBool('vibration') ?? true;
+  Future<void> setVibration(bool on) => _prefs.setBool('vibration', on);
+
+  bool get onboarded => _prefs.getBool('onboarded') ?? false;
+  Future<void> setOnboarded() => _prefs.setBool('onboarded', true);
+
+  /// Erases rank, streak, bests and learned difficulty. Settings stay.
+  Future<void> resetProgress() async {
+    const keep = {'adsRemoved', 'vibration', 'difficulty', 'onboarded'};
+    for (final key in _prefs.getKeys().toList()) {
+      if (!keep.contains(key)) await _prefs.remove(key);
+    }
+  }
+
   // ---- Daily Gauntlet -----------------------------------------------------
 
   int get gauntletBest => _prefs.getInt('gauntletBest') ?? 0;

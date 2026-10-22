@@ -6,8 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  Future<RankService> pumpHome(WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({});
+  Future<RankService> pumpApp(
+    WidgetTester tester, {
+    Map<String, Object> prefsValues = const {'onboarded': true},
+  }) async {
+    SharedPreferences.setMockInitialValues(prefsValues);
     final prefs = await SharedPreferences.getInstance();
 
     tester.view.physicalSize = const Size(1170, 2532);
@@ -22,7 +25,7 @@ void main() {
   }
 
   testWidgets('home screen shows Zed and the starting rank', (tester) async {
-    await pumpHome(tester);
+    await pumpApp(tester);
 
     expect(find.text('ZED-9'), findsOneWidget);
     expect(find.textContaining('ROOKIE'), findsWidgets);
@@ -30,12 +33,42 @@ void main() {
   });
 
   testWidgets('tapping Hard saves the difficulty', (tester) async {
-    final rank = await pumpHome(tester);
+    final rank = await pumpApp(tester);
     expect(rank.difficulty, Difficulty.auto);
 
     await tester.tap(find.text('Hard'));
     await tester.pumpAndSettle();
 
     expect(rank.difficulty, Difficulty.hard);
+  });
+
+  testWidgets('first launch shows onboarding, then Home', (tester) async {
+    final rank = await pumpApp(tester, prefsValues: const {});
+    expect(find.text('Meet Zed-9'), findsOneWidget);
+    expect(rank.onboarded, isFalse);
+
+    await tester.tap(find.text('NEXT'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('NEXT'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('GET STARTED'));
+    await tester.pumpAndSettle();
+
+    expect(rank.onboarded, isTrue);
+    expect(find.text('ZED-9'), findsOneWidget);
+  });
+
+  testWidgets('settings can switch vibration off', (tester) async {
+    final rank = await pumpApp(tester);
+    expect(rank.vibrationOn, isTrue);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vibration'), findsOneWidget);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+
+    expect(rank.vibrationOn, isFalse);
   });
 }

@@ -143,6 +143,33 @@ void main() {
     expect(r.points, 2 * 5 + 20);
   });
 
+  test('vibration is on by default and can be switched off', () async {
+    final s = await makeService({});
+    expect(s.vibrationOn, isTrue);
+    await s.setVibration(false);
+    expect(s.vibrationOn, isFalse);
+  });
+
+  test('resetProgress erases progress but keeps settings', () async {
+    final s = await makeService({
+      'rp': 450,
+      'streak': 9,
+      'memoryBest': 7,
+      'auto_reflex': 1.6,
+      'vibration': false,
+      'difficulty': 'hard',
+      'onboarded': true,
+    });
+    await s.resetProgress();
+    expect(s.rankPoints, 0);
+    expect(s.streak, 0);
+    expect(s.memoryBest, 0);
+    expect(s.vibrationOn, isFalse);
+    expect(s.difficulty, Difficulty.hard);
+    expect(s.onboarded, isTrue);
+    expect(s.levelFor('reflex'), Level.hard); // manual choice, not Auto
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));
