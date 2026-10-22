@@ -138,8 +138,13 @@ class _TopRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // Wrap (not Row) so long ranks or streaks drop to a second line
+    // instead of overflowing on narrow phones.
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 10,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -153,6 +158,7 @@ class _TopRow extends StatelessWidget {
           ),
         ),
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.local_fire_department_rounded,
                 color: AppColors.amber, size: 22),
@@ -298,12 +304,20 @@ class _ModeCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w700)),
-                      Text(subtitle,
-                          style: const TextStyle(
-                              color: AppColors.muted, fontSize: 12)),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(title,
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w700)),
+                      ),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(subtitle,
+                            style: const TextStyle(
+                                color: AppColors.muted, fontSize: 12)),
+                      ),
                     ],
                   ),
                 ],
