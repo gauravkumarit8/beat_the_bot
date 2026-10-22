@@ -112,6 +112,37 @@ void main() {
     expect(s.levelFor('pattern'), Level.medium);
   });
 
+  test('first Gauntlet of the day pays warm-up, wins and bonus', () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    final r = await s.onGauntletDone(day, 3, 700);
+    expect(r.firstToday, isTrue);
+    expect(r.points, 15 + 3 * 5 + 20);
+    expect(s.rankPoints, 50);
+    expect(s.gauntletTodayScore(day), 700);
+    expect(s.gauntletBest, 700);
+  });
+
+  test('a second Gauntlet the same day pays nothing but keeps the best',
+      () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    await s.onGauntletDone(day, 3, 700);
+    final r = await s.onGauntletDone(day, 4, 800);
+    expect(r.firstToday, isFalse);
+    expect(r.points, 0);
+    expect(s.rankPoints, 50);
+    expect(s.gauntletTodayScore(day), 800);
+    expect(s.gauntletTodayScore(DateTime(2026, 10, 23)), isNull);
+  });
+
+  test('Gauntlet skips the warm-up if a match already paid it today',
+      () async {
+    final s = await makeService({'warmupDay': '2026-10-22'});
+    final r = await s.onGauntletDone(DateTime(2026, 10, 22), 2, 500);
+    expect(r.points, 2 * 5 + 20);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../widgets/difficulty_badge.dart';
@@ -14,10 +15,22 @@ enum _Phase { ready, playing, roundOver, matchOver }
 /// A marker sweeps across a bar. Tap when it is inside the green zone.
 /// Five rounds, the sweep gets faster each round. Highest average wins.
 class PrecisionScreen extends StatefulWidget {
-  const PrecisionScreen({super.key, required this.rank, this.ads});
+  const PrecisionScreen({
+    super.key,
+    required this.rank,
+    this.ads,
+    this.gauntlet = false,
+    this.seed,
+  });
 
   final RankService rank;
   final AdsService? ads;
+
+  /// When true, the game hands its result back instead of paying rewards.
+  final bool gauntlet;
+
+  /// Same seed gives the same target positions (Daily Gauntlet).
+  final int? seed;
 
   @override
   State<PrecisionScreen> createState() => _PrecisionScreenState();
@@ -87,7 +100,8 @@ class _PrecisionScreenState extends State<PrecisionScreen>
         Level.hard => 120,
       };
 
-  final Random _rng = Random();
+  late final Random _rng =
+      widget.seed == null ? Random() : Random(widget.seed);
   late _ZedAccuracy _zed;
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
@@ -162,6 +176,14 @@ class _PrecisionScreenState extends State<PrecisionScreen>
     final zed = _avg(_zedScores);
     final won = you > zed;
     await widget.rank.recordResult('precision', _level, won);
+    if (widget.gauntlet) {
+      if (!mounted) return;
+      setState(() {
+        _won = won;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     Rank? up;
     final improved = you > widget.rank.precisionBest;
     if (improved) {
@@ -395,6 +417,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
           ],
         );
       case _Phase.matchOver:
+        if (widget.gauntlet) return _gauntletPanel();
         final up = _rankedUp;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -437,6 +460,30 @@ class _PrecisionScreenState extends State<PrecisionScreen>
           ],
         );
     }
+  }
+
+  GameResult _result() => GameResult(
+        game: 'Precision',
+        won: _won,
+        score: _avg(_you) * 2 + (_won ? 50 : 0),
+      );
+
+  Widget _gauntletPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Your average ${_avg(_you)}%  ·  Zed ${_avg(_zedScores)}%',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_result()),
+          child: const Text('CONTINUE'),
+        ),
+      ],
+    );
   }
 
   Widget _hint(String text) {

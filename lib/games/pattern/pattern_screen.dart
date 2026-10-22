@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../widgets/difficulty_badge.dart';
@@ -14,10 +15,22 @@ enum _Phase { ready, asking, revealed, matchOver }
 
 /// Five number puzzles, getting harder. Faster correct answers score more.
 class PatternScreen extends StatefulWidget {
-  const PatternScreen({super.key, required this.rank, this.ads});
+  const PatternScreen({
+    super.key,
+    required this.rank,
+    this.ads,
+    this.gauntlet = false,
+    this.seed,
+  });
 
   final RankService rank;
   final AdsService? ads;
+
+  /// When true, the game hands its result back instead of paying rewards.
+  final bool gauntlet;
+
+  /// Same seed gives the same puzzles (Daily Gauntlet).
+  final int? seed;
 
   @override
   State<PatternScreen> createState() => _PatternScreenState();
@@ -49,7 +62,8 @@ class _PatternScreenState extends State<PatternScreen>
         Level.hard => const Duration(seconds: 9),
       };
 
-  final Random _rng = Random();
+  late final Random _rng =
+      widget.seed == null ? Random() : Random(widget.seed);
   late final PatternGenerator _gen = PatternGenerator(_rng);
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
@@ -136,6 +150,14 @@ class _PatternScreenState extends State<PatternScreen>
   Future<void> _finish() async {
     final won = _youTotal > _zedTotal;
     await widget.rank.recordResult('pattern', _level, won);
+    if (widget.gauntlet) {
+      if (!mounted) return;
+      setState(() {
+        _won = won;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     Rank? up;
     final improved = _youTotal > widget.rank.patternBest;
     if (improved) {
@@ -393,6 +415,7 @@ class _PatternScreenState extends State<PatternScreen>
           ],
         );
       case _Phase.matchOver:
+        if (widget.gauntlet) return _gauntletPanel();
         final up = _rankedUp;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -444,6 +467,30 @@ class _PatternScreenState extends State<PatternScreen>
           ],
         );
     }
+  }
+
+  GameResult _result() => GameResult(
+        game: 'Pattern',
+        won: _won,
+        score: (_youTotal * 200 ~/ 750 > 200 ? 200 : _youTotal * 200 ~/ 750) + (_won ? 50 : 0),
+      );
+
+  Widget _gauntletPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Your score $_youTotal  ·  Zed $_zedTotal',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_result()),
+          child: const Text('CONTINUE'),
+        ),
+      ],
+    );
   }
 
   Widget _hint(String text) {

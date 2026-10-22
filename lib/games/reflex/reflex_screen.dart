@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../widgets/difficulty_badge.dart';
@@ -15,10 +16,18 @@ enum _Phase { ready, waiting, go, roundOver, matchOver }
 
 /// Best of five: first to three round wins beats Zed.
 class ReflexScreen extends StatefulWidget {
-  const ReflexScreen({super.key, required this.rank, this.ads});
+  const ReflexScreen({
+    super.key,
+    required this.rank,
+    this.ads,
+    this.gauntlet = false,
+  });
 
   final RankService rank;
   final AdsService? ads;
+
+  /// When true, the game hands its result back instead of paying rewards.
+  final bool gauntlet;
 
   @override
   State<ReflexScreen> createState() => _ReflexScreenState();
@@ -112,6 +121,14 @@ class _ReflexScreenState extends State<ReflexScreen> {
   Future<void> _finishMatch() async {
     final won = _youWins > _zedWins;
     await widget.rank.recordResult('reflex', _level, won);
+    if (widget.gauntlet) {
+      if (!mounted) return;
+      setState(() {
+        _matchWon = won;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     Rank? up;
     if (won) up = await widget.rank.onWinAgainstZed();
     final warmupUp = await widget.rank.onWarmupDone(DateTime.now());
@@ -301,6 +318,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
           ],
         );
       case _Phase.matchOver:
+        if (widget.gauntlet) return _gauntletPanel();
         final up = _rankedUp;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -338,6 +356,32 @@ class _ReflexScreenState extends State<ReflexScreen> {
           ],
         );
     }
+  }
+
+  GameResult _result() => GameResult(
+        game: 'Reflex',
+        won: _matchWon,
+        score: _youWins * 60 + (_matchWon ? 70 : 0),
+      );
+
+  Widget _gauntletPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _matchWon
+              ? 'You beat Zed $_youWins to $_zedWins!'
+              : 'Zed wins $_zedWins to $_youWins.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_result()),
+          child: const Text('CONTINUE'),
+        ),
+      ],
+    );
   }
 
   Widget _hint(String text) {

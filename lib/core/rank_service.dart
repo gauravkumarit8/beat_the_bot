@@ -43,6 +43,20 @@ class ReturnResult {
   bool get rankDropped => after.index < before.index;
 }
 
+/// What the player earned for finishing the Daily Gauntlet.
+class GauntletReward {
+  const GauntletReward({
+    required this.firstToday,
+    required this.points,
+    required this.rankUp,
+  });
+
+  /// Rewards only count for the first Gauntlet each day.
+  final bool firstToday;
+  final int points;
+  final Rank? rankUp;
+}
+
 class RankService {
   static const int pointsPerLevel = 10;
   static const int pointsPerWarmup = 15;
@@ -70,6 +84,43 @@ class RankService {
   int get patternBest => _prefs.getInt('patternBest') ?? 0;
   Future<void> setPatternBest(int score) =>
       _prefs.setInt('patternBest', score);
+
+  // ---- Daily Gauntlet -----------------------------------------------------
+
+  int get gauntletBest => _prefs.getInt('gauntletBest') ?? 0;
+
+  /// Today's best Gauntlet score, or null if it has not been played today.
+  int? gauntletTodayScore(DateTime now) {
+    if (_prefs.getString('gauntletDay') != _key(now)) return null;
+    return _prefs.getInt('gauntletTodayScore');
+  }
+
+  static const int gauntletBonus = 20;
+
+  Future<GauntletReward> onGauntletDone(
+      DateTime now, int wins, int score) async {
+    final key = _key(now);
+    final first = _prefs.getString('gauntletDay') != key;
+    if (score > gauntletBest) await _prefs.setInt('gauntletBest', score);
+
+    final previous = first ? 0 : (_prefs.getInt('gauntletTodayScore') ?? 0);
+    await _prefs.setString('gauntletDay', key);
+    await _prefs.setInt('gauntletTodayScore', score > previous ? score : previous);
+
+    if (!first) {
+      return const GauntletReward(firstToday: false, points: 0, rankUp: null);
+    }
+    final before = rank;
+    final warmup = _warmupDay == key ? 0 : pointsPerWarmup;
+    final points = warmup + wins * pointsPerWin + gauntletBonus;
+    await _prefs.setString('warmupDay', key);
+    await _prefs.setInt('rp', rankPoints + points);
+    return GauntletReward(
+      firstToday: true,
+      points: points,
+      rankUp: rank.index > before.index ? rank : null,
+    );
+  }
 
   // ---- Difficulty ---------------------------------------------------------
 

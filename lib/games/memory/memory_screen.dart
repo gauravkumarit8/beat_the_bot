@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/ads_service.dart';
 import '../../core/difficulty.dart';
+import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../widgets/difficulty_badge.dart';
@@ -15,10 +16,22 @@ enum _Phase { intro, showing, input, between, matchOver }
 /// Watch the tiles light up, then repeat the order.
 /// Zed "holds" a fixed number of tiles; hold more than him to win.
 class MemoryScreen extends StatefulWidget {
-  const MemoryScreen({super.key, required this.rank, this.ads});
+  const MemoryScreen({
+    super.key,
+    required this.rank,
+    this.ads,
+    this.gauntlet = false,
+    this.seed,
+  });
 
   final RankService rank;
   final AdsService? ads;
+
+  /// When true, the game hands its result back instead of paying rewards.
+  final bool gauntlet;
+
+  /// Same seed gives the same tile patterns (used by the Daily Gauntlet).
+  final int? seed;
 
   @override
   State<MemoryScreen> createState() => _MemoryScreenState();
@@ -47,7 +60,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
         Level.hard => 380,
       };
 
-  final Random _rng = Random();
+  late final Random _rng =
+      widget.seed == null ? Random() : Random(widget.seed);
   int _attempt = 0;
   late int _zedCap;
   String _taunt = '';
@@ -180,6 +194,14 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
   Future<void> _finishMatch({required bool won}) async {
     await widget.rank.recordResult('memory', _level, won);
+    if (widget.gauntlet) {
+      if (!mounted) return;
+      setState(() {
+        _won = won;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     Rank? up;
     final improved = _bestCleared > widget.rank.memoryBest;
     if (improved) {
@@ -356,6 +378,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
             ? 'Wrong tile! $_lives ${_lives == 1 ? 'life' : 'lives'} left'
             : 'Nice! Next level...');
       case _Phase.matchOver:
+        if (widget.gauntlet) return _gauntletPanel();
         final up = _rankedUp;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -400,6 +423,30 @@ class _MemoryScreenState extends State<MemoryScreen> {
           ],
         );
     }
+  }
+
+  GameResult _result() => GameResult(
+        game: 'Memory',
+        won: _won,
+        score: (_bestCleared > 10 ? 10 : _bestCleared) * 20 + (_won ? 50 : 0),
+      );
+
+  Widget _gauntletPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'You held $_bestCleared tiles. Zed holds $_zedCap.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_result()),
+          child: const Text('CONTINUE'),
+        ),
+      ],
+    );
   }
 
   Widget _hint(String text) {

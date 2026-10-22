@@ -5,6 +5,7 @@ import '../core/difficulty.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
+import 'gauntlet_screen.dart';
 import '../games/pattern/pattern_screen.dart';
 import '../games/precision/precision_screen.dart';
 import '../games/reflex/reflex_screen.dart';
@@ -69,6 +70,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _playGauntlet() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+          builder: (_) => GauntletScreen(rank: widget.rank, ads: widget.ads)),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<void> _setDifficulty(Difficulty d) async {
     await widget.rank.setDifficulty(d);
     if (mounted) setState(() {});
@@ -112,6 +121,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: Text('Watch ad: earn a streak freeze (${rank.freezes})'),
               ),
             ],
+            const SizedBox(height: 18),
+            _GauntletCard(
+              todayScore: rank.gauntletTodayScore(DateTime.now()),
+              onTap: _playGauntlet,
+            ),
             const SizedBox(height: 18),
             const Text('DIFFICULTY',
                 style: TextStyle(
@@ -466,6 +480,63 @@ class _DifficultyBar extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GauntletCard extends StatelessWidget {
+  const _GauntletCard({required this.todayScore, required this.onTap});
+
+  final int? todayScore;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = todayScore;
+    return Material(
+      color: AppColors.lime,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              const Icon(Icons.flag_rounded, color: AppColors.bg, size: 30),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'DAILY GAUNTLET',
+                        style: TextStyle(
+                          color: AppColors.bg,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      done == null
+                          ? '4 games. Same puzzles for everyone today.'
+                          : 'Today: $done points. Play again for practice.',
+                      style: const TextStyle(
+                          color: AppColors.bg, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.bg, size: 28),
+            ],
           ),
         ),
       ),
