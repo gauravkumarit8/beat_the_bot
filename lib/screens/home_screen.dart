@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/ads_service.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
+import '../games/memory/memory_screen.dart';
 import '../games/reflex/reflex_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -37,6 +38,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _playReflex() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => ReflexScreen(rank: widget.rank, ads: widget.ads)),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _playMemory() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+          builder: (_) => MemoryScreen(rank: widget.rank, ads: widget.ads)),
     );
     if (mounted) setState(() {});
   }
@@ -95,11 +104,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: _ModeCard(
                     title: 'Memory',
-                    subtitle: 'Coming soon',
+                    subtitle: 'Zed: weak spot',
                     icon: Icons.grid_view_rounded,
+                    onTap: _playMemory,
                   ),
                 ),
               ],

@@ -55,6 +55,10 @@ class RankService {
   int get freezes => _prefs.getInt('freezes') ?? 0;
   Rank get rank => rankForPoints(rankPoints);
 
+  /// Longest memory sequence the player has ever cleared.
+  int get memoryBest => _prefs.getInt('memoryBest') ?? 0;
+  Future<void> setMemoryBest(int tiles) => _prefs.setInt('memoryBest', tiles);
+
   String? get _lastPlayed => _prefs.getString('lastPlayed');
   String? get _warmupDay => _prefs.getString('warmupDay');
 

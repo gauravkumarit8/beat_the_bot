@@ -57,6 +57,13 @@ void main() {
     expect(s.rankPoints, RankService.pointsPerWarmup);
   });
 
+  test('memory best starts at zero and can be saved', () async {
+    final s = await makeService({});
+    expect(s.memoryBest, 0);
+    await s.setMemoryBest(7);
+    expect(s.memoryBest, 7);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));
