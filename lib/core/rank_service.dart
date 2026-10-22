@@ -64,6 +64,11 @@ class RankService {
   Future<void> setPrecisionBest(int percent) =>
       _prefs.setInt('precisionBest', percent);
 
+  /// Best total score in Pattern mode.
+  int get patternBest => _prefs.getInt('patternBest') ?? 0;
+  Future<void> setPatternBest(int score) =>
+      _prefs.setInt('patternBest', score);
+
   String? get _lastPlayed => _prefs.getString('lastPlayed');
   String? get _warmupDay => _prefs.getString('warmupDay');
 

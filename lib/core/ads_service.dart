@@ -27,10 +27,18 @@ class AdsService {
   /// Banner and interstitial ads stop; optional reward ads stay available.
   bool get adsRemoved => _prefs.getBool('adsRemoved') ?? false;
 
+  /// True once the Mobile Ads SDK has started. Banners wait for this.
+  final ValueNotifier<bool> ready = ValueNotifier<bool>(false);
+
   Future<void> init() async {
-    await MobileAds.instance.initialize();
-    _loadInterstitial();
-    _loadRewarded();
+    try {
+      await MobileAds.instance.initialize();
+      ready.value = true;
+      _loadInterstitial();
+      _loadRewarded();
+    } catch (_) {
+      // Ads are optional. The game keeps working if the SDK cannot start.
+    }
   }
 
   // ---- Interstitial: only between matches, never mid-play ----------------
@@ -126,11 +134,25 @@ class AdBanner extends StatefulWidget {
 class _AdBannerState extends State<AdBanner> {
   BannerAd? _ad;
   bool _loaded = false;
+  bool _requested = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.ads.adsRemoved) return;
+    if (widget.ads.ready.value) {
+      _createBanner();
+    } else {
+      widget.ads.ready.addListener(_onReady);
+    }
+  }
+
+  void _onReady() {
+    if (widget.ads.ready.value && !_requested) _createBanner();
+  }
+
+  void _createBanner() {
+    _requested = true;
     _ad = BannerAd(
       adUnitId: AdIds.banner,
       size: AdSize.banner,
@@ -149,6 +171,7 @@ class _AdBannerState extends State<AdBanner> {
 
   @override
   void dispose() {
+    widget.ads.ready.removeListener(_onReady);
     _ad?.dispose();
     super.dispose();
   }

@@ -116,6 +116,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
     final run = ++_run;
     final cleared = _len;
     if (cleared > _bestCleared) _bestCleared = cleared;
+    // Lock input immediately so a fast extra tap cannot run past the sequence.
+    setState(() => _phase = _Phase.between);
     if (cleared > _zedCap) {
       await _finishMatch(won: true);
       return;

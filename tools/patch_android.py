@@ -35,6 +35,9 @@ if "android.permission.INTERNET" not in s:
         1,
     )
 
+# Friendly app name on the phone's home screen.
+s = s.replace('android:label="beat_the_bot"', 'android:label="Beat the Bot"')
+
 if meta_key not in s:
     sys.exit("Could not patch AndroidManifest.xml")
 
