@@ -10,6 +10,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -30,14 +33,31 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
-      # You cannot run `flutter create` locally, so CI generates the Android
-      # project once and uploads it as an artifact for you to commit.
       - name: Generate Android scaffold (only if android/ is missing)
+        id: scaffold
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android --org com.grv --project-name beat_the_bot /tmp/scaffold
             cp -r /tmp/scaffold/android ./android
+            echo "generated=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Upload Android scaffold
+        if: steps.scaffold.outputs.generated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-scaffold
+          path: android/
+          retention-days: 7
+
+      - name: Commit generated Android project to the repo
+        if: steps.scaffold.outputs.generated == 'true' && github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f android
+          git commit -m "chore: add generated Android project" || echo "Nothing to commit"
+          git push || echo "Push skipped"
 
       - name: Get packages
         run: flutter pub get
@@ -56,10 +76,3 @@ jobs:
         with:
           name: debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
-
-      - name: Upload Android scaffold
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-scaffold
-          path: android/
-          retention-days: 7
