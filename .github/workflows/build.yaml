@@ -61,7 +61,20 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Test
-        run: flutter test
+        run: |
+          set -o pipefail
+          flutter test --reporter expanded 2>&1 | tee test.log
+
+      # If a test fails, put the useful part on the run's Summary page.
+      - name: Show test failure details
+        if: failure()
+        run: |
+          {
+            echo '### Test failure details'
+            echo '```'
+            grep -n -B3 -A25 'EXCEPTION CAUGHT\|Expected:\|\[E\]' test.log | head -150 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build debug APK
         run: flutter build apk --debug

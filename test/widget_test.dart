@@ -62,11 +62,12 @@ void main() {
     final rank = await pumpApp(tester);
     expect(rank.vibrationOn, isTrue);
 
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(find.byIcon(Icons.settings_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Vibration'), findsOneWidget);
 
-    await tester.tap(find.byType(Switch));
+    // Tap the whole row, which toggles the switch the same way a finger does.
+    await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
 
     expect(rank.vibrationOn, isFalse);
