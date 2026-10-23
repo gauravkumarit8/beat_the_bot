@@ -94,11 +94,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Text('Settings',
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
             const SizedBox(height: 18),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(20),
-              ),
+            Material(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
               child: SwitchListTile(
                 value: widget.rank.vibrationOn,
                 onChanged: _setVibration,
@@ -108,11 +107,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(20),
-              ),
+            Material(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   ListTile(
