@@ -3,9 +3,12 @@
 Run from the repo root. Safe to run on every CI build.
 Replace ADMOB_APP_ID with your real AdMob app ID before publishing.
 """
+import os
 import sys
 
-ADMOB_APP_ID = "ca-app-pub-3940256099942544~3347511713"  # Google TEST app ID
+# Release builds pass the real ID in the ADMOB_APP_ID environment variable.
+# Without it, Google's TEST app ID is used (safe for development).
+ADMOB_APP_ID = os.environ.get("ADMOB_APP_ID") or "ca-app-pub-3940256099942544~3347511713"
 PATH = "android/app/src/main/AndroidManifest.xml"
 
 with open(PATH, encoding="utf-8") as f:

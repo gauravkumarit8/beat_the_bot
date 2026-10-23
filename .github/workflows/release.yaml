@@ -1,0 +1,100 @@
+name: Release build (signed)
+
+# Runs when you push a tag like v0.1.0, or by hand from the Actions tab.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+      ADMOB_BANNER: ${{ secrets.ADMOB_BANNER }}
+      ADMOB_INTERSTITIAL: ${{ secrets.ADMOB_INTERSTITIAL }}
+      ADMOB_REWARDED: ${{ secrets.ADMOB_REWARDED }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing secrets
+        run: |
+          missing=""
+          for v in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub secrets:$missing"
+            exit 1
+          fi
+          if [ -z "$ADMOB_APP_ID" ] || [ -z "$ADMOB_BANNER" ] || [ -z "$ADMOB_INTERSTITIAL" ] || [ -z "$ADMOB_REWARDED" ]; then
+            echo "::warning::AdMob secrets are missing. This build will use Google TEST ads and will earn nothing."
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create keystore and key.properties
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          {
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=upload-keystore.jks"
+          } > android/key.properties
+
+      - name: Configure release signing and AdMob app ID
+        run: |
+          python3 tools/patch_signing.py
+          python3 tools/patch_android.py
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Analyze and test
+        run: |
+          flutter analyze --no-fatal-infos
+          flutter test
+
+      - name: Build signed release
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            NAME="${GITHUB_REF_NAME#v}"
+          else
+            NAME=$(grep '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*//; s/\+.*//')
+          fi
+          ARGS=()
+          if [ -n "$ADMOB_BANNER" ]; then ARGS+=("--dart-define=ADMOB_BANNER=$ADMOB_BANNER"); fi
+          if [ -n "$ADMOB_INTERSTITIAL" ]; then ARGS+=("--dart-define=ADMOB_INTERSTITIAL=$ADMOB_INTERSTITIAL"); fi
+          if [ -n "$ADMOB_REWARDED" ]; then ARGS+=("--dart-define=ADMOB_REWARDED=$ADMOB_REWARDED"); fi
+          echo "Building version $NAME, build number $GITHUB_RUN_NUMBER"
+          flutter build appbundle --release --build-name="$NAME" --build-number="$GITHUB_RUN_NUMBER" "${ARGS[@]}"
+          flutter build apk --release --build-name="$NAME" --build-number="$GITHUB_RUN_NUMBER" "${ARGS[@]}"
+
+      - name: Upload app bundle (for Play Console)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload APK (to test on your phone)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
