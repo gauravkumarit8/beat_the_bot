@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,15 +42,62 @@ class AdsService {
   /// True once the Mobile Ads SDK has started. Banners wait for this.
   final ValueNotifier<bool> ready = ValueNotifier<bool>(false);
 
+  bool _sdkStarted = false;
+
+  /// Asks for consent first (Google's consent message, shown only where the
+  /// law requires it), then starts the ads SDK if ads are allowed.
   Future<void> init() async {
     try {
+      final finished = Completer<void>();
+      ConsentInformation.instance.requestConsentInfoUpdate(
+        ConsentRequestParameters(),
+        () {
+          ConsentForm.loadAndShowConsentFormIfRequired((formError) async {
+            await _startIfAllowed();
+            if (!finished.isCompleted) finished.complete();
+          });
+        },
+        (formError) async {
+          // Could not update consent: fall back to last session's choice.
+          await _startIfAllowed();
+          if (!finished.isCompleted) finished.complete();
+        },
+      );
+      // Consent given in an earlier session may already allow ads.
+      await _startIfAllowed();
+      await finished.future.timeout(const Duration(seconds: 30), onTimeout: () {});
+    } catch (_) {
+      // Ads are optional. The game keeps working if consent or ads fail.
+    }
+  }
+
+  Future<void> _startIfAllowed() async {
+    if (_sdkStarted) return;
+    try {
+      if (!await ConsentInformation.instance.canRequestAds()) return;
+      _sdkStarted = true;
       await MobileAds.instance.initialize();
       ready.value = true;
       _loadInterstitial();
       _loadRewarded();
     } catch (_) {
-      // Ads are optional. The game keeps working if the SDK cannot start.
+      // Ignore: the game works without ads.
     }
+  }
+
+  /// True in regions where the player must be able to change their ad choices.
+  Future<bool> privacyOptionsRequired() async {
+    try {
+      final status =
+          await ConsentInformation.instance.getPrivacyOptionsRequirementStatus();
+      return status == PrivacyOptionsRequirementStatus.required;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void showPrivacyOptions() {
+    ConsentForm.showPrivacyOptionsForm((formError) {});
   }
 
   // ---- Interstitial: only between matches, never mid-play ----------------

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../core/ads_service.dart';
 import '../core/haptics.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.rank});
+  const SettingsScreen({super.key, required this.rank, this.ads});
 
   final RankService rank;
+  final AdsService? ads;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -15,6 +17,25 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const String _appVersion = '0.1.0';
+
+  /// Change this to wherever you host the privacy policy page.
+  static const String _policyUrl =
+      'https://gauravkumarit8.github.io/beat-the-bot/privacy/';
+
+  bool _adChoices = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdChoices();
+  }
+
+  Future<void> _checkAdChoices() async {
+    final ads = widget.ads;
+    if (ads == null) return;
+    final needed = await ads.privacyOptionsRequired();
+    if (mounted) setState(() => _adChoices = needed);
+  }
 
   Future<void> _setVibration(bool on) async {
     await widget.rank.setVibration(on);
@@ -61,10 +82,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: const Text('Privacy'),
-        content: const Text(
-          'Your rank, streak and scores are stored only on this phone, and '
-          'the game works offline. Ads are shown by Google AdMob, which may '
-          "use your device's advertising ID to choose ads.",
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your rank, streak and scores are stored only on this phone, '
+                'and the game works offline. Ads are shown by Google AdMob, '
+                "which may use your device's advertising ID to choose ads.",
+              ),
+              SizedBox(height: 12),
+              Text('Full privacy policy:',
+                  style: TextStyle(color: AppColors.muted, fontSize: 13)),
+              SelectableText(
+                _policyUrl,
+                style: TextStyle(color: AppColors.lime, fontSize: 13),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -113,6 +149,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
+                  if (_adChoices) ...[
+                    ListTile(
+                      title: const Text('Ad privacy choices'),
+                      trailing: const Icon(Icons.chevron_right_rounded,
+                          color: AppColors.muted),
+                      onTap: () => widget.ads?.showPrivacyOptions(),
+                    ),
+                    const Divider(height: 1, color: AppColors.line),
+                  ],
                   ListTile(
                     title: const Text('Privacy'),
                     trailing: const Icon(Icons.chevron_right_rounded,
