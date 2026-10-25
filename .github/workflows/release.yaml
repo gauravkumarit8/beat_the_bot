@@ -5,6 +5,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      no_shrink:
+        description: 'Diagnostic: build without code shrinking (R8)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -62,6 +67,7 @@ jobs:
       - name: Configure release signing and AdMob app ID
         run: |
           python3 tools/patch_signing.py
+          python3 tools/patch_proguard.py
           python3 tools/patch_android.py
 
       - name: Get packages
@@ -73,6 +79,8 @@ jobs:
           flutter test
 
       - name: Build signed release
+        env:
+          NO_SHRINK: ${{ inputs.no_shrink }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             NAME="${GITHUB_REF_NAME#v}"
@@ -83,9 +91,11 @@ jobs:
           if [ -n "$ADMOB_BANNER" ]; then ARGS+=("--dart-define=ADMOB_BANNER=$ADMOB_BANNER"); fi
           if [ -n "$ADMOB_INTERSTITIAL" ]; then ARGS+=("--dart-define=ADMOB_INTERSTITIAL=$ADMOB_INTERSTITIAL"); fi
           if [ -n "$ADMOB_REWARDED" ]; then ARGS+=("--dart-define=ADMOB_REWARDED=$ADMOB_REWARDED"); fi
+          SHRINK_ARGS=()
+          if [ "$NO_SHRINK" = "true" ]; then SHRINK_ARGS+=(--no-shrink); echo "Diagnostic build: code shrinking is OFF"; fi
           echo "Building version $NAME, build number $GITHUB_RUN_NUMBER"
-          flutter build appbundle --release --build-name="$NAME" --build-number="$GITHUB_RUN_NUMBER" "${ARGS[@]}"
-          flutter build apk --release --build-name="$NAME" --build-number="$GITHUB_RUN_NUMBER" "${ARGS[@]}"
+          flutter build appbundle --release --build-name="$NAME" --build-number="$GITHUB_RUN_NUMBER" "${ARGS[@]}" "${SHRINK_ARGS[@]}"
+          flutter build apk --release --build-name="$NAME" --build-number="$GITHUB_RUN_NUMBER" "${ARGS[@]}" "${SHRINK_ARGS[@]}"
 
       - name: Upload app bundle (for Play Console)
         uses: actions/upload-artifact@v4
