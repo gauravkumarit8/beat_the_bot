@@ -66,6 +66,8 @@ void main() {
 
     expect(find.text('Brain age'), findsOneWidget);
     expect(find.textContaining('Weekly ladder'), findsOneWidget);
+    await tester.scrollUntilVisible(find.textContaining('Achievements'), 300);
+    expect(find.textContaining('Achievements'), findsOneWidget);
   });
 
   testWidgets('settings can switch vibration off', (tester) async {

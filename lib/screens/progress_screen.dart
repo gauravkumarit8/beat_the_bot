@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/achievements.dart';
 import '../core/progress.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
@@ -78,6 +79,8 @@ class ProgressScreen extends StatelessWidget {
             _card(child: _skills()),
             const SizedBox(height: 14),
             _card(child: _ladder(ladder)),
+            const SizedBox(height: 14),
+            _card(child: _achievements()),
           ],
         ),
       ),
@@ -205,6 +208,57 @@ class ProgressScreen extends StatelessWidget {
                 textAlign: TextAlign.right,
                 style: const TextStyle(color: AppColors.muted, fontSize: 13)),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _achievements() {
+    final unlocked = rank.unlockedAchievements;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Achievements: ${unlocked.length} of ${allAchievements.length}',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        const SizedBox(height: 12),
+        for (final a in allAchievements)
+          _achievementRow(a, unlocked.contains(a.id)),
+      ],
+    );
+  }
+
+  Widget _achievementRow(Achievement a, bool done) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            done ? Icons.emoji_events_rounded : Icons.lock_outline_rounded,
+            color: done ? AppColors.amber : AppColors.muted,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(a.title,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: done ? AppColors.text : AppColors.muted)),
+                Text(a.description,
+                    style: const TextStyle(
+                        color: AppColors.muted, fontSize: 13)),
+              ],
+            ),
+          ),
+          if (done)
+            const Text('UNLOCKED',
+                style: TextStyle(
+                    color: AppColors.amber,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700)),
         ],
       ),
     );

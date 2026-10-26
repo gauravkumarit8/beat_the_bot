@@ -4,6 +4,7 @@
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'achievements.dart';
 import 'difficulty.dart';
 
 enum Rank { rookie, sharp, elite, master, legend }
@@ -101,6 +102,44 @@ class RankService {
     }
   }
 
+  // ---- Achievements -------------------------------------------------------
+
+  int get totalWins => _prefs.getInt('totalWins') ?? 0;
+  int get hardWins => _prefs.getInt('hardWins') ?? 0;
+  int get perfectGauntlets => _prefs.getInt('perfectGauntlets') ?? 0;
+  int get bestStreak => _prefs.getInt('bestStreak') ?? 0;
+  int get highestRankIndex => _prefs.getInt('highestRank') ?? 0;
+
+  Future<void> _setStreak(int value) async {
+    await _prefs.setInt('streak', value);
+    if (value > bestStreak) await _prefs.setInt('bestStreak', value);
+  }
+
+  Future<void> _noteHighestRank() async {
+    if (rank.index > highestRankIndex) {
+      await _prefs.setInt('highestRank', rank.index);
+    }
+  }
+
+  Set<String> get unlockedAchievements =>
+      (_prefs.getStringList('achievements') ?? const <String>[]).toSet();
+
+  /// Unlocks any badge whose goal is now met. Returns the newly unlocked ones.
+  Future<List<Achievement>> checkAchievements() async {
+    final unlocked = unlockedAchievements;
+    final fresh = [
+      for (final a in allAchievements)
+        if (!unlocked.contains(a.id) && a.isMet(this)) a,
+    ];
+    if (fresh.isNotEmpty) {
+      await _prefs.setStringList(
+        'achievements',
+        [...unlocked, for (final a in fresh) a.id],
+      );
+    }
+    return fresh;
+  }
+
   // ---- Progress: weekly points, history, reflex best ------------------------
 
   /// The Monday that starts the week containing [now].
@@ -173,6 +212,9 @@ class RankService {
       DateTime now, int wins, int score) async {
     final key = _key(now);
     await _saveGauntletScore(key, score);
+    if (wins >= 4) {
+      await _prefs.setInt('perfectGauntlets', perfectGauntlets + 1);
+    }
     final first = _prefs.getString('gauntletDay') != key;
     if (score > gauntletBest) await _prefs.setInt('gauntletBest', score);
 
@@ -189,6 +231,7 @@ class RankService {
     await _prefs.setString('warmupDay', key);
     await _prefs.setInt('rp', rankPoints + points);
     await _addWeekly(points, now);
+    await _noteHighestRank();
     return GauntletReward(
       firstToday: true,
       points: points,
@@ -241,6 +284,12 @@ class RankService {
     if (next < 0) next = 0;
     if (next > 2) next = 2;
     await _prefs.setDouble('auto_$game', next);
+    if (won) {
+      await _prefs.setInt('totalWins', totalWins + 1);
+      if (played == Level.hard) {
+        await _prefs.setInt('hardWins', hardWins + 1);
+      }
+    }
   }
 
   String? get _lastPlayed => _prefs.getString('lastPlayed');
@@ -269,7 +318,7 @@ class RankService {
     final last = _lastPlayed;
     if (last == null) {
       await _prefs.setString('lastPlayed', _key(today));
-      await _prefs.setInt('streak', 1);
+      await _setStreak(1);
       return null;
     }
 
@@ -300,7 +349,7 @@ class RankService {
 
     // Streak: continues if played yesterday, or a freeze covered the gap.
     final keepStreak = missed == 0 || usedFreeze || missed == 1;
-    await _prefs.setInt('streak', keepStreak ? streak + 1 : 1);
+    await _setStreak(keepStreak ? streak + 1 : 1);
     await _prefs.setString('lastPlayed', _key(today));
 
     return ReturnResult(
@@ -319,6 +368,7 @@ class RankService {
     final before = rank;
     await _prefs.setInt('rp', rankPoints + points);
     await _addWeekly(points, DateTime.now());
+    await _noteHighestRank();
     return rank.index > before.index ? rank : null;
   }
 

@@ -198,6 +198,67 @@ void main() {
     expect(s.reflexBestMs, 260);
   });
 
+  test('first win unlocks First blood once', () async {
+    final s = await makeService({});
+    expect(await s.checkAchievements(), isEmpty);
+    await s.recordResult('reflex', Level.medium, true);
+    final first = await s.checkAchievements();
+    expect([for (final a in first) a.id], contains('first_win'));
+    expect(await s.checkAchievements(), isEmpty);
+    expect(s.unlockedAchievements, contains('first_win'));
+  });
+
+  test('a Hard win counts, a Hard loss does not', () async {
+    final s = await makeService({});
+    await s.recordResult('memory', Level.hard, false);
+    expect(s.hardWins, 0);
+    await s.recordResult('memory', Level.hard, true);
+    expect(s.hardWins, 1);
+    expect(s.totalWins, 1);
+  });
+
+  test('three days in a row unlock the 3-day streak badge', () async {
+    final s = await makeService({});
+    await s.onAppOpen(DateTime(2026, 10, 1));
+    await s.onAppOpen(DateTime(2026, 10, 2));
+    await s.onAppOpen(DateTime(2026, 10, 3));
+    expect(s.bestStreak, 3);
+    final ids = [for (final a in await s.checkAchievements()) a.id];
+    expect(ids, contains('streak_3'));
+    expect(ids, isNot(contains('streak_7')));
+  });
+
+  test('reaching Sharp rank is remembered even if the rank later drops',
+      () async {
+    final s = await makeService({});
+    for (var i = 0; i < 10; i++) {
+      await s.onLevelPassed();
+    }
+    expect(s.rank, Rank.sharp);
+    expect(s.highestRankIndex, Rank.sharp.index);
+    await s.onAppOpen(DateTime(2026, 10, 1));
+    await s.onAppOpen(DateTime(2026, 10, 20)); // long gap, rank drops
+    expect(s.rank, Rank.rookie);
+    expect(s.highestRankIndex, Rank.sharp.index);
+  });
+
+  test('a perfect Gauntlet is counted', () async {
+    final s = await makeService({});
+    await s.onGauntletDone(DateTime(2026, 10, 22), 4, 900);
+    expect(s.perfectGauntlets, 1);
+    final ids = [for (final a in await s.checkAchievements()) a.id];
+    expect(ids, containsAll(['gauntlet_1', 'gauntlet_800', 'perfect']));
+  });
+
+  test('reset progress clears badges', () async {
+    final s = await makeService({});
+    await s.recordResult('reflex', Level.medium, true);
+    await s.checkAchievements();
+    await s.resetProgress();
+    expect(s.unlockedAchievements, isEmpty);
+    expect(s.totalWins, 0);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

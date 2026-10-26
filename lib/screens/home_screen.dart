@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => ReflexScreen(rank: widget.rank, ads: widget.ads)),
     );
-    if (mounted) setState(() {});
+    await _afterRoute();
   }
 
   Future<void> _playMemory() async {
@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
           builder: (_) => MemoryScreen(rank: widget.rank, ads: widget.ads)),
     );
-    if (mounted) setState(() {});
+    await _afterRoute();
   }
 
   Future<void> _playPrecision() async {
@@ -61,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
           builder: (_) => PrecisionScreen(rank: widget.rank, ads: widget.ads)),
     );
-    if (mounted) setState(() {});
+    await _afterRoute();
   }
 
   Future<void> _playPattern() async {
@@ -69,7 +69,20 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
           builder: (_) => PatternScreen(rank: widget.rank, ads: widget.ads)),
     );
-    if (mounted) setState(() {});
+    await _afterRoute();
+  }
+
+  /// Runs after coming back from any screen: refresh and announce new badges.
+  Future<void> _afterRoute() async {
+    final unlocked = await widget.rank.checkAchievements();
+    if (!mounted) return;
+    setState(() {});
+    if (unlocked.isNotEmpty) {
+      final names = unlocked.map((a) => a.title).join(', ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Achievement unlocked: $names')),
+      );
+    }
   }
 
   Future<void> _openProgress() async {
@@ -77,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
           builder: (_) => ProgressScreen(rank: widget.rank)),
     );
-    if (mounted) setState(() {});
+    await _afterRoute();
   }
 
   Future<void> _openSettings() async {
@@ -86,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (_) =>
               SettingsScreen(rank: widget.rank, ads: widget.ads)),
     );
-    if (mounted) setState(() {});
+    await _afterRoute();
   }
 
   Future<void> _playGauntlet() async {
@@ -94,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
           builder: (_) => GauntletScreen(rank: widget.rank, ads: widget.ads)),
     );
-    if (mounted) setState(() {});
+    await _afterRoute();
   }
 
   Future<void> _setDifficulty(Difficulty d) async {
