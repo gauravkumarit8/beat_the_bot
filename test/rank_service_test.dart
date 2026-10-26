@@ -170,6 +170,34 @@ void main() {
     expect(s.levelFor('reflex'), Level.hard); // manual choice, not Auto
   });
 
+  test('weekly points add up and reset on a new week', () async {
+    final s = await makeService({});
+    final thursday = DateTime(2026, 10, 22);
+    await s.onGauntletDone(thursday, 3, 700); // pays 50 RP
+    expect(s.weeklyPoints(thursday), 50);
+    expect(s.weeklyPoints(DateTime(2026, 10, 25)), 50); // same week, Sunday
+    expect(s.weeklyPoints(DateTime(2026, 10, 26)), 0); // next Monday
+  });
+
+  test('Gauntlet history keeps the best score per day', () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    await s.onGauntletDone(day, 3, 700);
+    await s.onGauntletDone(day, 2, 500);
+    expect(s.gauntletHistory()['2026-10-22'], 700);
+  });
+
+  test('fastest reaction time is remembered', () async {
+    final s = await makeService({});
+    expect(s.reflexBestMs, 0);
+    await s.noteReflexTime(310);
+    await s.noteReflexTime(450);
+    await s.noteReflexTime(260);
+    expect(s.reflexBestMs, 260);
+    await s.noteReflexTime(0);
+    expect(s.reflexBestMs, 260);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

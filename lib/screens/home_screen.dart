@@ -6,6 +6,7 @@ import '../core/rank_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
 import 'gauntlet_screen.dart';
+import 'progress_screen.dart';
 import 'settings_screen.dart';
 import '../games/pattern/pattern_screen.dart';
 import '../games/precision/precision_screen.dart';
@@ -71,6 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _openProgress() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+          builder: (_) => ProgressScreen(rank: widget.rank)),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<void> _openSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -118,7 +127,11 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            _TopRow(rank: rank, onSettings: _openSettings),
+            _TopRow(
+              rank: rank,
+              onSettings: _openSettings,
+              onProgress: _openProgress,
+            ),
             const SizedBox(height: 18),
             const _ZedCard(),
             const SizedBox(height: 18),
@@ -201,10 +214,15 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _TopRow extends StatelessWidget {
-  const _TopRow({required this.rank, required this.onSettings});
+  const _TopRow({
+    required this.rank,
+    required this.onSettings,
+    required this.onProgress,
+  });
 
   final RankService rank;
   final VoidCallback onSettings;
+  final VoidCallback onProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -238,10 +256,20 @@ class _TopRow extends StatelessWidget {
                     color: AppColors.amber, fontWeight: FontWeight.w700)),
           ],
         ),
-        IconButton(
-          tooltip: 'Settings',
-          onPressed: onSettings,
-          icon: const Icon(Icons.settings_rounded, color: AppColors.muted),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Progress',
+              onPressed: onProgress,
+              icon: const Icon(Icons.insights_rounded, color: AppColors.muted),
+            ),
+            IconButton(
+              tooltip: 'Settings',
+              onPressed: onSettings,
+              icon: const Icon(Icons.settings_rounded, color: AppColors.muted),
+            ),
+          ],
         ),
       ],
     );

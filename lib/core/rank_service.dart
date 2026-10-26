@@ -101,6 +101,62 @@ class RankService {
     }
   }
 
+  // ---- Progress: weekly points, history, reflex best ------------------------
+
+  /// The Monday that starts the week containing [now].
+  static DateTime weekStart(DateTime now) =>
+      _dateOnly(now).subtract(Duration(days: now.weekday - 1));
+
+  /// "yyyy-MM-dd" key for a day, used by the progress screen.
+  static String dayKey(DateTime d) => _key(d);
+
+  /// Rank points earned since Monday. Resets by itself every week.
+  int weeklyPoints(DateTime now) {
+    if (_prefs.getString('weekKey') != _key(weekStart(now))) return 0;
+    return _prefs.getInt('weekRp') ?? 0;
+  }
+
+  Future<void> _addWeekly(int points, DateTime now) async {
+    final key = _key(weekStart(now));
+    final current = _prefs.getString('weekKey') == key
+        ? (_prefs.getInt('weekRp') ?? 0)
+        : 0;
+    await _prefs.setString('weekKey', key);
+    await _prefs.setInt('weekRp', current + points);
+  }
+
+  /// Best Gauntlet score for each recent day (up to 30 days), by day key.
+  Map<String, int> gauntletHistory() {
+    final out = <String, int>{};
+    for (final e in _prefs.getStringList('gauntletHistory') ?? const <String>[]) {
+      final i = e.indexOf(':');
+      if (i < 0) continue;
+      final v = int.tryParse(e.substring(i + 1));
+      if (v != null) out[e.substring(0, i)] = v;
+    }
+    return out;
+  }
+
+  Future<void> _saveGauntletScore(String key, int score) async {
+    final history = gauntletHistory();
+    if (score > (history[key] ?? 0)) history[key] = score;
+    final keys = history.keys.toList()..sort();
+    final kept = keys.length > 30 ? keys.sublist(keys.length - 30) : keys;
+    await _prefs.setStringList(
+      'gauntletHistory',
+      [for (final k in kept) '$k:${history[k]}'],
+    );
+  }
+
+  /// Fastest valid reaction time in milliseconds, or 0 if none yet.
+  int get reflexBestMs => _prefs.getInt('reflexBestMs') ?? 0;
+
+  Future<void> noteReflexTime(int ms) async {
+    if (ms <= 0) return;
+    final best = reflexBestMs;
+    if (best == 0 || ms < best) await _prefs.setInt('reflexBestMs', ms);
+  }
+
   // ---- Daily Gauntlet -----------------------------------------------------
 
   int get gauntletBest => _prefs.getInt('gauntletBest') ?? 0;
@@ -116,6 +172,7 @@ class RankService {
   Future<GauntletReward> onGauntletDone(
       DateTime now, int wins, int score) async {
     final key = _key(now);
+    await _saveGauntletScore(key, score);
     final first = _prefs.getString('gauntletDay') != key;
     if (score > gauntletBest) await _prefs.setInt('gauntletBest', score);
 
@@ -131,6 +188,7 @@ class RankService {
     final points = warmup + wins * pointsPerWin + gauntletBonus;
     await _prefs.setString('warmupDay', key);
     await _prefs.setInt('rp', rankPoints + points);
+    await _addWeekly(points, now);
     return GauntletReward(
       firstToday: true,
       points: points,
@@ -260,6 +318,7 @@ class RankService {
   Future<Rank?> _add(int points) async {
     final before = rank;
     await _prefs.setInt('rp', rankPoints + points);
+    await _addWeekly(points, DateTime.now());
     return rank.index > before.index ? rank : null;
   }
 

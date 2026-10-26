@@ -58,6 +58,16 @@ void main() {
     expect(find.text('ZED-9'), findsOneWidget);
   });
 
+  testWidgets('progress screen opens and shows brain age', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byIcon(Icons.insights_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Brain age'), findsOneWidget);
+    expect(find.textContaining('Weekly ladder'), findsOneWidget);
+  });
+
   testWidgets('settings can switch vibration off', (tester) async {
     final rank = await pumpApp(tester);
     expect(rank.vibrationOn, isTrue);

@@ -103,7 +103,10 @@ class _ReflexScreenState extends State<ReflexScreen> {
   void _endRound(int? youMs) {
     final zedMs = _zed.nextReactionMs();
     final youWon = youMs != null && youMs < zedMs;
-    if (youMs != null) _zed.learn(youMs);
+    if (youMs != null) {
+      _zed.learn(youMs);
+      widget.rank.noteReflexTime(youMs);
+    }
     setState(() {
       _yourMs = youMs;
       _zedMs = zedMs;
