@@ -4,9 +4,12 @@ import '../core/difficulty.dart';
 
 /// Zed's reaction-time brain. He learns your average and stays just beatable.
 class ZedAi {
-  ZedAi({this.level = Level.medium});
+  ZedAi({this.level = Level.medium, this.handicap = 1.0});
 
   final Level level;
+
+  /// 1.0 is normal. Above 1.0 Zed reacts slower (after a rewarded ad).
+  final double handicap;
 
   static const String opening = 'Think you can beat me?';
 
@@ -32,7 +35,7 @@ class ZedAi {
       Level.medium => 0.97,
       Level.hard => 0.90,
     };
-    final base = avg == null ? start : avg * factor;
+    final base = (avg == null ? start : avg * factor) * handicap;
     final jitter = (_rng.nextDouble() - 0.5) * 80;
     return (base + jitter).clamp(190.0, 420.0).round();
   }
@@ -42,6 +45,10 @@ class ZedAi {
     'Blink and you miss it.',
     'Is that all you have?',
     'Predictable.',
+    'Is your thumb even awake?',
+    'I have seen faster toasters.',
+    'Losing builds character. You are very well built.',
+    'Do not worry. I will go easy. No I will not.',
   ];
 
   static const List<String> _youWinLines = [
@@ -49,6 +56,10 @@ class ZedAi {
     'Hm. Fine. Again.',
     'My sensors were calibrating.',
     'You will not do that twice.',
+    'Enjoy it. It will not last.',
+    'A glitch. That was a glitch.',
+    'Now I am taking this personally.',
+    'Do that again. I dare you.',
   ];
 
   String winLine() => _zedWinsLines[_rng.nextInt(_zedWinsLines.length)];

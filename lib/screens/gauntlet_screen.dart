@@ -46,6 +46,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   final List<GameResult> _results = [];
   bool _done = false;
   GauntletReward? _reward;
+  bool _doubled = false;
 
   Widget _screenFor(int i, int seed) {
     switch (i) {
@@ -67,6 +68,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _results.clear();
       _done = false;
       _reward = null;
+      _doubled = false;
     });
     for (var i = 0; i < _names.length; i++) {
       final result = await Navigator.of(context).push<GameResult>(
@@ -117,6 +119,21 @@ class _GauntletScreenState extends State<GauntletScreen> {
     );
   }
 
+  void _doubleReward(int points) {
+    widget.ads?.showRewarded(
+      onReward: () async {
+        await widget.rank.doubleGauntletReward(DateTime.now(), points);
+        if (mounted) setState(() => _doubled = true);
+      },
+      onNotReady: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Ad not ready yet. Try again in a moment.')),
+        );
+      },
+    );
+  }
+
   void _home() {
     widget.ads?.showInterstitialIfDue();
     Navigator.of(context).pop();
@@ -124,7 +141,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ads = widget.ads;
     return Scaffold(
+      bottomNavigationBar: ads == null ? null : AdBanner(ads: ads),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
@@ -255,7 +274,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
     if (reward == null || !reward.firstToday) {
       rewardText = 'Practice run. Rewards count once a day.';
     } else {
-      rewardText = '+${reward.points} RP earned';
+      rewardText = _doubled
+          ? '+${reward.points * 2} RP earned (doubled)'
+          : '+${reward.points} RP earned';
     }
     return [
       const SizedBox(height: 24),
@@ -286,11 +307,29 @@ class _GauntletScreenState extends State<GauntletScreen> {
             style: const TextStyle(
                 color: AppColors.amber, fontWeight: FontWeight.w700)),
       ],
+      if (widget.ads != null &&
+          reward != null &&
+          reward.firstToday &&
+          reward.points > 0 &&
+          !_doubled &&
+          !widget.rank.gauntletDoubled(DateTime.now())) ...[
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _doubleReward(reward.points),
+          icon: const Icon(Icons.play_circle_outline_rounded),
+          label: Text("Watch ad: double today's RP (+${reward.points})"),
+        ),
+      ],
       const SizedBox(height: 18),
       FilledButton(onPressed: _copyResult, child: const Text('COPY MY RESULT')),
       const SizedBox(height: 10),
       OutlinedButton(
-          onPressed: _start, child: const Text('PLAY AGAIN (PRACTICE)')),
+        onPressed: () {
+          widget.ads?.showInterstitialIfDue();
+          _start();
+        },
+        child: const Text('PLAY AGAIN (PRACTICE)'),
+      ),
       const SizedBox(height: 10),
       OutlinedButton(onPressed: _home, child: const Text('BACK TO HOME')),
     ];

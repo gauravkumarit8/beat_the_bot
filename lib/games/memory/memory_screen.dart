@@ -3,7 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../core/ad_actions.dart';
 import '../../core/ads_service.dart';
+import '../../core/brag.dart';
 import '../../core/difficulty.dart';
 import '../../core/haptics.dart';
 import '../../core/game_result.dart';
@@ -43,6 +45,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
   static const int _tiles = 9;
 
   late Level _level;
+  bool _weak = false;
+  bool _usedContinue = false;
 
   int get _startLen => switch (_level) {
         Level.easy => 3,
@@ -88,6 +92,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
     _level = widget.rank.levelFor('memory');
     _len = _startLen;
     _lives = _maxLives;
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
     _pickZed();
   }
 
@@ -107,6 +113,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     };
     final span = _level == Level.medium ? 3 : 2;
     _zedCap = base + Random(seed).nextInt(span);
+    if (_weak && _zedCap > 3) _zedCap -= 1;
     _taunt = 'I hold $_zedCap tiles. Show me you can hold more.';
   }
 
@@ -191,10 +198,62 @@ class _MemoryScreenState extends State<MemoryScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted || run != _run) return;
     if (_lives <= 0) {
+      if (await _offerContinue()) {
+        if (!mounted || run != _run) return;
+        _usedContinue = true;
+        setState(() => _lives = 1);
+        _startLevel();
+        return;
+      }
       await _finishMatch(won: false);
       return;
     }
     _startLevel();
+  }
+
+  /// Rewarded ad, always optional: one extra life, once per match.
+  /// Not offered inside the Daily Gauntlet, so everyone plays it the same.
+  Future<bool> _offerContinue() async {
+    final ads = widget.ads;
+    if (ads == null || widget.gauntlet || _usedContinue || !mounted) {
+      return false;
+    }
+    final wants = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Out of lives'),
+        content: const Text('Watch a short ad to keep going with one more life?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('NO THANKS'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('WATCH AD'),
+          ),
+        ],
+      ),
+    );
+    if (wants != true || !mounted) return false;
+    final result = Completer<bool>();
+    ads.showRewarded(
+      onReward: () {
+        if (!result.isCompleted) result.complete(true);
+      },
+      onNotReady: () {
+        if (!result.isCompleted) result.complete(false);
+      },
+      onClosed: () {
+        // If the ad closes without a reward, the player gets nothing.
+        if (!result.isCompleted) result.complete(false);
+      },
+    );
+    return result.future.timeout(
+      const Duration(minutes: 3),
+      onTimeout: () => false,
+    );
   }
 
   Future<void> _finishMatch({required bool won}) async {
@@ -235,6 +294,9 @@ class _MemoryScreenState extends State<MemoryScreen> {
     _run++;
     _attempt++;
     _level = widget.rank.levelFor('memory');
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
+    _usedContinue = false;
     _pickZed();
     setState(() {
       _phase = _Phase.intro;
@@ -422,6 +484,28 @@ class _MemoryScreenState extends State<MemoryScreen> {
                       color: AppColors.amber, fontWeight: FontWeight.w700)),
             ],
             const SizedBox(height: 16),
+            if (!_won && widget.ads != null && !widget.rank.zedWeakened) ...[
+              OutlinedButton.icon(
+                onPressed: () => watchToWeakenZed(
+                  context,
+                  widget.rank,
+                  widget.ads!,
+                  () {
+                    if (mounted) setState(() {});
+                  },
+                ),
+                icon: const Icon(Icons.play_circle_outline_rounded),
+                label: const Text('Watch ad: weaken Zed next match'),
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (_won) ...[
+              OutlinedButton(
+                onPressed: _brag,
+                child: const Text('COPY BRAG'),
+              ),
+              const SizedBox(height: 10),
+            ],
             FilledButton(
               onPressed: () {
                 widget.ads?.showInterstitialIfDue();
@@ -465,6 +549,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
       ],
     );
   }
+
+  void _brag() => copyBrag(context, 'I held $_bestCleared tiles in Memory against Zed (${_level.label}). Beat that. Beat the Bot');
 
   Widget _hint(String text) {
     return SizedBox(

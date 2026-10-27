@@ -107,6 +107,24 @@ class RankService {
 
   static const int revengeBonus = 10;
 
+  /// From this many wins in a row, every extra win pays a bonus.
+  static const int hotStreakFrom = 4;
+  static const int hotStreakBonus = 5;
+
+  /// Set by a rewarded ad. Makes Zed weaker for the next match only.
+  bool get zedWeakened => _prefs.getBool('zedWeak') ?? false;
+  Future<void> setZedWeakened(bool on) => _prefs.setBool('zedWeak', on);
+
+  bool gauntletDoubled(DateTime now) =>
+      _prefs.getString('doubleDay') == _key(now);
+
+  /// Rewarded ad on the Gauntlet result: pay the day's reward a second time.
+  Future<Rank?> doubleGauntletReward(DateTime now, int points) async {
+    if (gauntletDoubled(now) || points <= 0) return null;
+    await _prefs.setString('doubleDay', _key(now));
+    return _add(points);
+  }
+
   int get totalLosses => _prefs.getInt('totalLosses') ?? 0;
   int get winStreak => _prefs.getInt('winStreak') ?? 0;
   int get lossStreak => _prefs.getInt('lossStreak') ?? 0;
@@ -325,6 +343,10 @@ class RankService {
       await _prefs.setInt('hardWins', hardWins + 1);
     }
     await _prefs.setInt('winStreak', winStreak + 1);
+    if (winStreak >= hotStreakFrom) {
+      await _add(hotStreakBonus);
+      await _queueNotice('Hot streak x$winStreak! +$hotStreakBonus RP');
+    }
     await _prefs.setInt('lossStreak', 0);
 
     if (revengeReady) {

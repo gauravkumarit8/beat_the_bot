@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../core/ad_actions.dart';
 import '../../core/ads_service.dart';
+import '../../core/brag.dart';
 import '../../core/difficulty.dart';
 import '../../core/haptics.dart';
 import '../../core/game_result.dart';
@@ -40,9 +42,12 @@ class PrecisionScreen extends StatefulWidget {
 
 /// Zed's accuracy: stays close to your recent average, with some wobble.
 class _ZedAccuracy {
-  _ZedAccuracy(this.level);
+  _ZedAccuracy(this.level, {this.penalty = 0});
 
   final Level level;
+
+  /// Points taken off Zed's accuracy (after a rewarded ad).
+  final double penalty;
   final Random _rng = Random();
   double? _avg;
 
@@ -60,7 +65,7 @@ class _ZedAccuracy {
     };
     final base = avg == null ? start : (avg * factor).clamp(70.0, 98.0);
     final jitter = (_rng.nextDouble() - 0.5) * 14;
-    return (base + jitter).clamp(55.0, 99.0).round();
+    return (base + jitter - penalty).clamp(55.0, 99.0).round();
   }
 
   void learn(int playerAccuracy) {
@@ -76,6 +81,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   static const int _rounds = 5;
 
   late Level _level;
+  bool _weak = false;
 
   /// Width of the green zone as a fraction of the bar.
   double get _zoneFrac => switch (_level) {
@@ -127,7 +133,9 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   void initState() {
     super.initState();
     _level = widget.rank.levelFor('precision');
-    _zed = _ZedAccuracy(_level);
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
+    _zed = _ZedAccuracy(_level, penalty: _weak ? 8 : 0);
   }
 
   @override
@@ -215,7 +223,9 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   void _rematch() {
     _ctrl.stop();
     _level = widget.rank.levelFor('precision');
-    _zed = _ZedAccuracy(_level);
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
+    _zed = _ZedAccuracy(_level, penalty: _weak ? 8 : 0);
     setState(() {
       _phase = _Phase.ready;
       _round = 1;
@@ -458,6 +468,28 @@ class _PrecisionScreenState extends State<PrecisionScreen>
                       color: AppColors.amber, fontWeight: FontWeight.w700)),
             ],
             const SizedBox(height: 16),
+            if (!_won && widget.ads != null && !widget.rank.zedWeakened) ...[
+              OutlinedButton.icon(
+                onPressed: () => watchToWeakenZed(
+                  context,
+                  widget.rank,
+                  widget.ads!,
+                  () {
+                    if (mounted) setState(() {});
+                  },
+                ),
+                icon: const Icon(Icons.play_circle_outline_rounded),
+                label: const Text('Watch ad: weaken Zed next match'),
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (_won) ...[
+              OutlinedButton(
+                onPressed: _brag,
+                child: const Text('COPY BRAG'),
+              ),
+              const SizedBox(height: 10),
+            ],
             FilledButton(
               onPressed: () {
                 widget.ads?.showInterstitialIfDue();
@@ -501,6 +533,8 @@ class _PrecisionScreenState extends State<PrecisionScreen>
       ],
     );
   }
+
+  void _brag() => copyBrag(context, 'I averaged ${_avg(_you)}% in Precision (${_level.label}) against Zed. Beat the Bot');
 
   Widget _hint(String text) {
     return SizedBox(

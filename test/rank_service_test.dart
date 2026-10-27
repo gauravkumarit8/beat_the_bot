@@ -329,6 +329,43 @@ void main() {
     expect(games.length, 4);
   });
 
+  test('hot streak pays a bonus from the 4th win in a row', () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    final dareGame = dareForDay(day).game;
+    final game = ['reflex', 'memory', 'precision', 'pattern']
+        .firstWhere((g) => g != dareGame);
+    for (var i = 0; i < 3; i++) {
+      await s.recordResult(game, Level.medium, true, now: day);
+    }
+    expect(s.rankPoints, 0);
+    await s.recordResult(game, Level.medium, true, now: day);
+    expect(s.rankPoints, RankService.hotStreakBonus);
+    expect((await s.takeNotices()).single, contains('Hot streak'));
+  });
+
+  test('doubling the Gauntlet reward pays only once a day', () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    final reward = await s.onGauntletDone(day, 3, 700);
+    expect(s.gauntletDoubled(day), isFalse);
+    await s.doubleGauntletReward(day, reward.points);
+    expect(s.rankPoints, reward.points * 2);
+    await s.doubleGauntletReward(day, reward.points);
+    expect(s.rankPoints, reward.points * 2);
+    expect(s.gauntletDoubled(day), isTrue);
+    expect(s.gauntletDoubled(DateTime(2026, 10, 23)), isFalse);
+  });
+
+  test('the weakened-Zed flag can be set and cleared', () async {
+    final s = await makeService({});
+    expect(s.zedWeakened, isFalse);
+    await s.setZedWeakened(true);
+    expect(s.zedWeakened, isTrue);
+    await s.setZedWeakened(false);
+    expect(s.zedWeakened, isFalse);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

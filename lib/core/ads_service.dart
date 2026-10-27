@@ -158,6 +158,7 @@ class AdsService {
   void showRewarded({
     required VoidCallback onReward,
     required VoidCallback onNotReady,
+    VoidCallback? onClosed,
   }) {
     final ad = _rewarded;
     if (ad == null) {
@@ -169,10 +170,12 @@ class AdsService {
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _loadRewarded();
+        onClosed?.call();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         _loadRewarded();
+        onClosed?.call();
       },
     );
     _rewarded = null;

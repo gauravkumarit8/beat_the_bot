@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openProgress() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-          builder: (_) => ProgressScreen(rank: widget.rank)),
+          builder: (_) => ProgressScreen(rank: widget.rank, ads: widget.ads)),
     );
     await _afterRoute();
   }
@@ -362,6 +362,14 @@ class _ZedCard extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w700),
                 ),
+                if (rank.winStreak + 1 >= RankService.hotStreakFrom)
+                  Text(
+                    'Hot streak! Every win pays +${RankService.hotStreakBonus} RP',
+                    style: const TextStyle(
+                        color: AppColors.amber,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700),
+                  ),
                 if (rank.revengeReady)
                   Text(
                     'Revenge bonus ready: +${RankService.revengeBonus} RP',

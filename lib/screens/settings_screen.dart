@@ -114,7 +114,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ads = widget.ads;
     return Scaffold(
+      bottomNavigationBar: ads == null ? null : AdBanner(ads: ads),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),

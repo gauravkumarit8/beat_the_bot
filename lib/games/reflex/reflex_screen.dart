@@ -3,7 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../core/ad_actions.dart';
 import '../../core/ads_service.dart';
+import '../../core/brag.dart';
 import '../../core/difficulty.dart';
 import '../../core/haptics.dart';
 import '../../core/game_result.dart';
@@ -41,6 +43,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
 
   late ZedAi _zed;
   late Level _level;
+  bool _weak = false;
   final Random _rng = Random();
   final Stopwatch _clock = Stopwatch();
   Timer? _timer;
@@ -61,7 +64,10 @@ class _ReflexScreenState extends State<ReflexScreen> {
   void initState() {
     super.initState();
     _level = widget.rank.levelFor('reflex');
-    _zed = ZedAi(level: _level);
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
+    _zed = ZedAi(level: _level, handicap: _weak ? 1.15 : 1.0);
+    if (_weak) _taunt = 'You slowed me down? Cheater. I still win.';
   }
 
   @override
@@ -164,7 +170,9 @@ class _ReflexScreenState extends State<ReflexScreen> {
 
   void _rematch() {
     _level = widget.rank.levelFor('reflex');
-    _zed = ZedAi(level: _level);
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
+    _zed = ZedAi(level: _level, handicap: _weak ? 1.15 : 1.0);
     setState(() {
       _round = 1;
       _youWins = 0;
@@ -172,7 +180,9 @@ class _ReflexScreenState extends State<ReflexScreen> {
       _yourMs = null;
       _zedMs = null;
       _rankedUp = null;
-      _taunt = ZedAi.opening;
+      _taunt = _weak
+          ? 'You slowed me down? Cheater. I still win.'
+          : ZedAi.opening;
       _mood = ZedMood.neutral;
       _phase = _Phase.ready;
     });
@@ -357,6 +367,28 @@ class _ReflexScreenState extends State<ReflexScreen> {
                       color: AppColors.amber, fontWeight: FontWeight.w700)),
             ],
             const SizedBox(height: 16),
+            if (!_matchWon && widget.ads != null && !widget.rank.zedWeakened) ...[
+              OutlinedButton.icon(
+                onPressed: () => watchToWeakenZed(
+                  context,
+                  widget.rank,
+                  widget.ads!,
+                  () {
+                    if (mounted) setState(() {});
+                  },
+                ),
+                icon: const Icon(Icons.play_circle_outline_rounded),
+                label: const Text('Watch ad: weaken Zed next match'),
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (_matchWon) ...[
+              OutlinedButton(
+                onPressed: _brag,
+                child: const Text('COPY BRAG'),
+              ),
+              const SizedBox(height: 10),
+            ],
             FilledButton(
               onPressed: () {
                 widget.ads?.showInterstitialIfDue();
@@ -402,6 +434,8 @@ class _ReflexScreenState extends State<ReflexScreen> {
       ],
     );
   }
+
+  void _brag() => copyBrag(context, 'I beat Zed $_youWins-$_zedWins in Reflex (${_level.label}). Your turn. Beat the Bot');
 
   Widget _hint(String text) {
     return SizedBox(

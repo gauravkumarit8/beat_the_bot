@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../core/ad_actions.dart';
 import '../../core/ads_service.dart';
+import '../../core/brag.dart';
 import '../../core/difficulty.dart';
 import '../../core/haptics.dart';
 import '../../core/game_result.dart';
@@ -43,9 +45,15 @@ class _PatternScreenState extends State<PatternScreen>
   static const int _rounds = 5;
 
   late Level _level;
+  bool _weak = false;
 
   /// Chance that Zed solves each round (he gets worse as puzzles get harder).
-  List<double> get _zedAccuracy => switch (_level) {
+  List<double> get _zedAccuracy {
+    final base = _baseZedAccuracy;
+    return _weak ? [for (final v in base) v - 0.15] : base;
+  }
+
+  List<double> get _baseZedAccuracy => switch (_level) {
         Level.easy => const [0.9, 0.8, 0.65, 0.5, 0.4],
         Level.medium => const [0.95, 0.9, 0.8, 0.65, 0.5],
         Level.hard => const [0.98, 0.95, 0.9, 0.8, 0.7],
@@ -91,6 +99,8 @@ class _PatternScreenState extends State<PatternScreen>
   void initState() {
     super.initState();
     _level = widget.rank.levelFor('pattern');
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
     _ctrl.duration = _timeLimit;
     _ctrl.addStatusListener((status) {
       if (status == AnimationStatus.completed && _phase == _Phase.asking) {
@@ -189,6 +199,8 @@ class _PatternScreenState extends State<PatternScreen>
   void _rematch() {
     _ctrl.stop();
     _level = widget.rank.levelFor('pattern');
+    _weak = widget.rank.zedWeakened;
+    if (_weak) widget.rank.setZedWeakened(false);
     _ctrl.duration = _timeLimit;
     setState(() {
       _phase = _Phase.ready;
@@ -465,6 +477,28 @@ class _PatternScreenState extends State<PatternScreen>
                       color: AppColors.amber, fontWeight: FontWeight.w700)),
             ],
             const SizedBox(height: 14),
+            if (!_won && widget.ads != null && !widget.rank.zedWeakened) ...[
+              OutlinedButton.icon(
+                onPressed: () => watchToWeakenZed(
+                  context,
+                  widget.rank,
+                  widget.ads!,
+                  () {
+                    if (mounted) setState(() {});
+                  },
+                ),
+                icon: const Icon(Icons.play_circle_outline_rounded),
+                label: const Text('Watch ad: weaken Zed next match'),
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (_won) ...[
+              OutlinedButton(
+                onPressed: _brag,
+                child: const Text('COPY BRAG'),
+              ),
+              const SizedBox(height: 10),
+            ],
             FilledButton(
               onPressed: () {
                 widget.ads?.showInterstitialIfDue();
@@ -508,6 +542,8 @@ class _PatternScreenState extends State<PatternScreen>
       ],
     );
   }
+
+  void _brag() => copyBrag(context, 'I scored $_youTotal in Pattern (${_level.label}) against Zed. Beat the Bot');
 
   Widget _hint(String text) {
     return SizedBox(

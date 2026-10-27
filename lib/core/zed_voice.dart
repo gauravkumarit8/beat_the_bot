@@ -46,6 +46,10 @@ ZedLine zedHomeLine({
     ZedLine('I have been warming up. Have you?', ZedMood.neutral),
     ZedLine('Your streak is cute. Let me ruin it.', ZedMood.smug),
     ZedLine('Same time, same loss?', ZedMood.smug),
+    ZedLine('Your rank is showing. It is not impressive.', ZedMood.smug),
+    ZedLine('Go on, pick the game you are worst at.', ZedMood.neutral),
+    ZedLine('I trained all night. You napped. Obviously.', ZedMood.smug),
+    ZedLine('Today I am feeling generous. That was a joke.', ZedMood.neutral),
   ];
   return lines[now.day % lines.length];
 }

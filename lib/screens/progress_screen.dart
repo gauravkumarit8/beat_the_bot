@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../core/achievements.dart';
+import '../core/ads_service.dart';
 import '../core/progress.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
 
 /// Shows how the player is improving, plus a weekly ladder against bots.
 class ProgressScreen extends StatelessWidget {
-  const ProgressScreen({super.key, required this.rank});
+  const ProgressScreen({super.key, required this.rank, this.ads});
 
   final RankService rank;
+  final AdsService? ads;
 
   static const List<String> _dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -26,7 +28,10 @@ class ProgressScreen extends StatelessWidget {
     final age = brainAge(skills);
     final ladder = buildLadder(now: now, yourPoints: rank.weeklyPoints(now));
 
+    final adsService = ads;
     return Scaffold(
+      bottomNavigationBar:
+          adsService == null ? null : AdBanner(ads: adsService),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
