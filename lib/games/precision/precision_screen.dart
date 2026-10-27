@@ -8,7 +8,9 @@ import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../core/zed_voice.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/zed_face.dart';
 
 enum _Phase { ready, playing, roundOver, matchOver }
 
@@ -119,6 +121,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   bool _newBest = false;
   Rank? _rankedUp;
   String _taunt = 'Steady hands? I doubt it.';
+  ZedMood _mood = ZedMood.neutral;
 
   @override
   void initState() {
@@ -158,6 +161,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
       _lastYou = acc;
       _lastZed = zedAcc;
       _taunt = acc >= zedAcc ? 'A lucky hand. Again.' : 'Not even close.';
+      _mood = acc >= zedAcc ? ZedMood.annoyed : ZedMood.smug;
       _phase = _Phase.roundOver;
     });
   }
@@ -180,6 +184,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
       if (!mounted) return;
       setState(() {
         _won = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
         _phase = _Phase.matchOver;
       });
       return;
@@ -200,6 +205,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
     if (!mounted) return;
     setState(() {
       _won = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
       _newBest = improved;
       _rankedUp = up;
       _phase = _Phase.matchOver;
@@ -218,6 +224,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
       _rankedUp = null;
       _newBest = false;
       _taunt = 'Steady hands? I doubt it.';
+      _mood = ZedMood.neutral;
     });
   }
 
@@ -304,7 +311,16 @@ class _PrecisionScreenState extends State<PrecisionScreen>
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text('ZED-9: "$_taunt"', style: const TextStyle(fontSize: 16)),
+      child: Row(
+        children: [
+          ZedFace(mood: _mood, size: 36),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('ZED-9: "$_taunt"',
+                style: const TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
     );
   }
 

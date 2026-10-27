@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../core/ads_service.dart';
+import '../core/dare.dart';
 import '../core/difficulty.dart';
+import '../core/zed_voice.dart';
+import '../widgets/zed_face.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
@@ -23,6 +26,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _missed = 0;
+
   @override
   void initState() {
     super.initState();
@@ -32,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _onOpen() async {
     final result = await widget.rank.onAppOpen(DateTime.now());
     if (!mounted) return;
-    setState(() {});
+    setState(() => _missed = result?.missedDays ?? 0);
     if (result != null && (result.rankDropped || result.usedFreeze)) {
       await showDialog<void>(
         context: context,
@@ -72,16 +77,38 @@ class _HomeScreenState extends State<HomeScreen> {
     await _afterRoute();
   }
 
-  /// Runs after coming back from any screen: refresh and announce new badges.
+  /// Runs after coming back from any screen: refresh, then announce revenge,
+  /// dare and new badges.
   Future<void> _afterRoute() async {
     final unlocked = await widget.rank.checkAchievements();
+    final notices = await widget.rank.takeNotices();
     if (!mounted) return;
     setState(() {});
-    if (unlocked.isNotEmpty) {
-      final names = unlocked.map((a) => a.title).join(', ');
+    final lines = [
+      ...notices,
+      if (unlocked.isNotEmpty)
+        'Achievement unlocked: ${unlocked.map((a) => a.title).join(', ')}',
+    ];
+    if (lines.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Achievement unlocked: $names')),
+        SnackBar(
+          content: Text(lines.join('\n')),
+          duration: const Duration(seconds: 5),
+        ),
       );
+    }
+  }
+
+  void _startGame(String game) {
+    switch (game) {
+      case 'reflex':
+        _playReflex();
+      case 'memory':
+        _playMemory();
+      case 'precision':
+        _playPrecision();
+      default:
+        _playPattern();
     }
   }
 
@@ -146,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onProgress: _openProgress,
             ),
             const SizedBox(height: 18),
-            const _ZedCard(),
+            _ZedCard(rank: rank, missedDays: _missed),
             const SizedBox(height: 18),
             _TodayCard(twist: twist, rank: rank),
             if (ads != null) ...[
@@ -158,6 +185,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
             const SizedBox(height: 18),
+            _DareCard(
+              dare: dareForDay(DateTime.now()),
+              done: rank.dareDone(DateTime.now()),
+              onTap: () => _startGame(dareForDay(DateTime.now()).game),
+            ),
+            const SizedBox(height: 12),
             _GauntletCard(
               todayScore: rank.gauntletTodayScore(DateTime.now()),
               onTap: _playGauntlet,
@@ -290,35 +323,53 @@ class _TopRow extends StatelessWidget {
 }
 
 class _ZedCard extends StatelessWidget {
-  const _ZedCard();
+  const _ZedCard({required this.rank, required this.missedDays});
+
+  final RankService rank;
+  final int missedDays;
 
   @override
   Widget build(BuildContext context) {
+    final line = zedHomeLine(
+      rank: rank,
+      now: DateTime.now(),
+      missedDays: missedDays,
+    );
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(24),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: AppColors.line,
-            child: Icon(Icons.smart_toy_rounded,
-                size: 38, color: AppColors.coral),
-          ),
-          SizedBox(width: 14),
+          ZedFace(mood: line.mood, size: 72, backdrop: true),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('ZED-9',
+                const Text('ZED-9',
                     style:
                         TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                SizedBox(height: 2),
-                Text('"Pick a game. I\'ll pick your weakness."',
-                    style: TextStyle(color: AppColors.muted, fontSize: 14)),
+                const SizedBox(height: 2),
+                Text('"${line.text}"',
+                    style:
+                        const TextStyle(color: AppColors.muted, fontSize: 14)),
+                const SizedBox(height: 8),
+                Text(
+                  'You ${rank.totalWins}  ·  Zed ${rank.totalLosses}',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                if (rank.revengeReady)
+                  Text(
+                    'Revenge bonus ready: +${RankService.revengeBonus} RP',
+                    style: const TextStyle(
+                        color: AppColors.amber,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700),
+                  ),
               ],
             ),
           ),
@@ -593,6 +644,73 @@ class _GauntletCard extends StatelessWidget {
               ),
               const Icon(Icons.chevron_right_rounded,
                   color: AppColors.bg, size: 28),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DareCard extends StatelessWidget {
+  const _DareCard({
+    required this.dare,
+    required this.done,
+    required this.onTap,
+  });
+
+  final DailyDare dare;
+  final bool done;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: done ? null : onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: done ? AppColors.line : AppColors.coral, width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                done ? Icons.check_circle_rounded : Icons.whatshot_rounded,
+                color: done ? AppColors.lime : AppColors.coral,
+                size: 28,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("ZED'S DARE",
+                        style: TextStyle(
+                            color: AppColors.muted,
+                            letterSpacing: 1,
+                            fontSize: 12)),
+                    const SizedBox(height: 2),
+                    Text(dare.title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                done ? 'DONE' : '+${dare.reward} RP',
+                style: TextStyle(
+                  color: done ? AppColors.lime : AppColors.amber,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),

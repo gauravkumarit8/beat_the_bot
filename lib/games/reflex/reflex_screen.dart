@@ -9,7 +9,9 @@ import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../core/zed_voice.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/zed_face.dart';
 import '../zed_ai.dart';
 
 enum _Phase { ready, waiting, go, roundOver, matchOver }
@@ -53,6 +55,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
   bool _matchWon = false;
   Rank? _rankedUp;
   String _taunt = ZedAi.opening;
+  ZedMood _mood = ZedMood.neutral;
 
   @override
   void initState() {
@@ -117,6 +120,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
         _zedWins++;
       }
       _taunt = youWon ? _zed.loseLine() : _zed.winLine();
+      _mood = youWon ? ZedMood.annoyed : ZedMood.smug;
       _phase = _Phase.roundOver;
     });
   }
@@ -128,6 +132,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
       if (!mounted) return;
       setState(() {
         _matchWon = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
         _phase = _Phase.matchOver;
       });
       return;
@@ -140,6 +145,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
     if (!mounted) return;
     setState(() {
       _matchWon = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
       _rankedUp = up;
       _phase = _Phase.matchOver;
     });
@@ -167,6 +173,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
       _zedMs = null;
       _rankedUp = null;
       _taunt = ZedAi.opening;
+      _mood = ZedMood.neutral;
       _phase = _Phase.ready;
     });
   }
@@ -244,7 +251,16 @@ class _ReflexScreenState extends State<ReflexScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text('ZED-9: "$_taunt"', style: const TextStyle(fontSize: 16)),
+      child: Row(
+        children: [
+          ZedFace(mood: _mood, size: 36),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('ZED-9: "$_taunt"',
+                style: const TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
     );
   }
 

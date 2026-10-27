@@ -8,7 +8,9 @@ import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../core/zed_voice.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/zed_face.dart';
 import 'pattern_generator.dart';
 
 enum _Phase { ready, asking, revealed, matchOver }
@@ -83,6 +85,7 @@ class _PatternScreenState extends State<PatternScreen>
   bool _newBest = false;
   Rank? _rankedUp;
   String _taunt = 'Patterns are my favourite. Try to keep up.';
+  ZedMood _mood = ZedMood.neutral;
 
   @override
   void initState() {
@@ -134,6 +137,7 @@ class _PatternScreenState extends State<PatternScreen>
       _youTotal += gain;
       _zedTotal += zedGain;
       _taunt = gain > zedGain ? 'Hm. Lucky guess.' : 'Too easy for me.';
+      _mood = gain > zedGain ? ZedMood.annoyed : ZedMood.smug;
       _phase = _Phase.revealed;
     });
   }
@@ -154,6 +158,7 @@ class _PatternScreenState extends State<PatternScreen>
       if (!mounted) return;
       setState(() {
         _won = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
         _phase = _Phase.matchOver;
       });
       return;
@@ -174,6 +179,7 @@ class _PatternScreenState extends State<PatternScreen>
     if (!mounted) return;
     setState(() {
       _won = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
       _newBest = improved;
       _rankedUp = up;
       _phase = _Phase.matchOver;
@@ -194,6 +200,7 @@ class _PatternScreenState extends State<PatternScreen>
       _rankedUp = null;
       _newBest = false;
       _taunt = 'Patterns are my favourite. Try to keep up.';
+      _mood = ZedMood.neutral;
     });
   }
 
@@ -271,7 +278,16 @@ class _PatternScreenState extends State<PatternScreen>
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text('ZED-9: "$_taunt"', style: const TextStyle(fontSize: 16)),
+      child: Row(
+        children: [
+          ZedFace(mood: _mood, size: 36),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('ZED-9: "$_taunt"',
+                style: const TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
     );
   }
 

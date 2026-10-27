@@ -1,3 +1,4 @@
+import 'package:beat_the_bot/core/dare.dart';
 import 'package:beat_the_bot/core/difficulty.dart';
 import 'package:beat_the_bot/core/rank_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -257,6 +258,75 @@ void main() {
     await s.resetProgress();
     expect(s.unlockedAchievements, isEmpty);
     expect(s.totalWins, 0);
+  });
+
+  test('a loss arms revenge and the next win pays the bonus once', () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    final dareGame = dareForDay(day).game;
+    final game = ['reflex', 'memory', 'precision', 'pattern']
+        .firstWhere((g) => g != dareGame);
+
+    await s.recordResult(game, Level.medium, false, now: day);
+    expect(s.revengeReady, isTrue);
+    expect(s.totalLosses, 1);
+    expect(s.lossStreak, 1);
+
+    await s.recordResult(game, Level.medium, true, now: day);
+    expect(s.revengeReady, isFalse);
+    expect(s.rankPoints, RankService.revengeBonus);
+    final notices = await s.takeNotices();
+    expect(notices.single, contains('Revenge'));
+
+    await s.recordResult(game, Level.medium, true, now: day);
+    expect(s.rankPoints, RankService.revengeBonus);
+  });
+
+  test("Zed's dare pays once, only for the dare game", () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    final dare = dareForDay(day);
+    final other = ['reflex', 'memory', 'precision', 'pattern']
+        .firstWhere((g) => g != dare.game);
+
+    await s.recordResult(other, Level.medium, true, now: day);
+    expect(s.dareDone(day), isFalse);
+    expect(s.rankPoints, 0);
+
+    await s.recordResult(dare.game, Level.medium, true, now: day);
+    expect(s.dareDone(day), isTrue);
+    expect(s.rankPoints, dare.reward);
+
+    await s.recordResult(dare.game, Level.medium, true, now: day);
+    expect(s.rankPoints, dare.reward);
+
+    expect((await s.takeNotices()).single, contains('dare'));
+    expect(await s.takeNotices(), isEmpty);
+    expect(s.dareDone(DateTime(2026, 10, 23)), isFalse);
+  });
+
+  test('win and loss streaks reset each other', () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 22);
+    await s.recordResult('reflex', Level.medium, true, now: day);
+    await s.recordResult('reflex', Level.medium, true, now: day);
+    expect(s.winStreak, 2);
+    await s.recordResult('reflex', Level.medium, false, now: day);
+    expect(s.winStreak, 0);
+    expect(s.lossStreak, 1);
+    await s.recordResult('reflex', Level.medium, true, now: day);
+    expect(s.lossStreak, 0);
+    expect(s.winStreak, 1);
+  });
+
+  test('the dare is the same all day and rotates through the games', () {
+    final a = dareForDay(DateTime(2026, 10, 22, 6));
+    final b = dareForDay(DateTime(2026, 10, 22, 23));
+    expect(a.game, b.game);
+    final games = {
+      for (var i = 0; i < 4; i++) dareForDay(DateTime(2026, 10, 22 + i)).game
+    };
+    expect(games.length, 4);
   });
 
   test('daily twist is the same for the same date', () {

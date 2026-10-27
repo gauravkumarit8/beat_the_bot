@@ -5,6 +5,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'achievements.dart';
+import 'dare.dart';
 import 'difficulty.dart';
 
 enum Rank { rookie, sharp, elite, master, legend }
@@ -100,6 +101,31 @@ class RankService {
     for (final key in _prefs.getKeys().toList()) {
       if (!keep.contains(key)) await _prefs.remove(key);
     }
+  }
+
+  // ---- Rivalry: record, revenge, dare, notices ------------------------------
+
+  static const int revengeBonus = 10;
+
+  int get totalLosses => _prefs.getInt('totalLosses') ?? 0;
+  int get winStreak => _prefs.getInt('winStreak') ?? 0;
+  int get lossStreak => _prefs.getInt('lossStreak') ?? 0;
+
+  /// True after a loss. The next win against Zed pays a revenge bonus.
+  bool get revengeReady => _prefs.getBool('revenge') ?? false;
+
+  bool dareDone(DateTime now) => _prefs.getString('dareDay') == _key(now);
+
+  Future<void> _queueNotice(String message) async {
+    final list = _prefs.getStringList('notices') ?? <String>[];
+    await _prefs.setStringList('notices', [...list, message]);
+  }
+
+  /// Short messages (revenge, dare) to show once, then forget.
+  Future<List<String>> takeNotices() async {
+    final list = _prefs.getStringList('notices') ?? <String>[];
+    if (list.isNotEmpty) await _prefs.remove('notices');
+    return list;
   }
 
   // ---- Achievements -------------------------------------------------------
@@ -273,9 +299,10 @@ class RankService {
     }
   }
 
-  /// Call after every finished match so Auto learns from the player's record.
-  /// The change is anchored to the level that was actually played.
-  Future<void> recordResult(String game, Level played, bool won) async {
+  /// Call after every finished match. Teaches Auto difficulty, keeps the win
+  /// and loss counts, and pays the revenge bonus and Zed's daily dare.
+  Future<void> recordResult(String game, Level played, bool won,
+      {DateTime? now}) async {
     final old = _autoLevel(game);
     final anchor = played.index.toDouble();
     var next = won
@@ -284,11 +311,34 @@ class RankService {
     if (next < 0) next = 0;
     if (next > 2) next = 2;
     await _prefs.setDouble('auto_$game', next);
-    if (won) {
-      await _prefs.setInt('totalWins', totalWins + 1);
-      if (played == Level.hard) {
-        await _prefs.setInt('hardWins', hardWins + 1);
-      }
+
+    if (!won) {
+      await _prefs.setInt('totalLosses', totalLosses + 1);
+      await _prefs.setInt('lossStreak', lossStreak + 1);
+      await _prefs.setInt('winStreak', 0);
+      await _prefs.setBool('revenge', true);
+      return;
+    }
+
+    await _prefs.setInt('totalWins', totalWins + 1);
+    if (played == Level.hard) {
+      await _prefs.setInt('hardWins', hardWins + 1);
+    }
+    await _prefs.setInt('winStreak', winStreak + 1);
+    await _prefs.setInt('lossStreak', 0);
+
+    if (revengeReady) {
+      await _prefs.setBool('revenge', false);
+      await _add(revengeBonus);
+      await _queueNotice('Revenge! +$revengeBonus RP');
+    }
+
+    final today = now ?? DateTime.now();
+    final dare = dareForDay(today);
+    if (dare.game == game && !dareDone(today)) {
+      await _prefs.setString('dareDay', _key(today));
+      await _add(dare.reward);
+      await _queueNotice('Zed\u2019s dare done! +${dare.reward} RP');
     }
   }
 

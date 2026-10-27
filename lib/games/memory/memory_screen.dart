@@ -9,7 +9,9 @@ import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
+import '../../core/zed_voice.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/zed_face.dart';
 
 enum _Phase { intro, showing, input, between, matchOver }
 
@@ -65,6 +67,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   int _attempt = 0;
   late int _zedCap;
   String _taunt = '';
+  ZedMood _mood = ZedMood.neutral;
 
   _Phase _phase = _Phase.intro;
   late int _len;
@@ -168,6 +171,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     setState(() {
       _phase = _Phase.between;
       _taunt = 'Hm. $cleared tiles. Lucky.';
+      _mood = ZedMood.annoyed;
     });
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted || run != _run) return;
@@ -182,6 +186,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
       _wrong = i;
       _phase = _Phase.between;
       _taunt = 'Forgot already?';
+      _mood = ZedMood.smug;
     });
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted || run != _run) return;
@@ -198,6 +203,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
       if (!mounted) return;
       setState(() {
         _won = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
         _phase = _Phase.matchOver;
       });
       return;
@@ -218,6 +224,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     if (!mounted) return;
     setState(() {
       _won = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
       _newBest = improved;
       _rankedUp = up;
       _phase = _Phase.matchOver;
@@ -231,6 +238,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     _pickZed();
     setState(() {
       _phase = _Phase.intro;
+      _mood = ZedMood.neutral;
       _len = _startLen;
       _bestCleared = 0;
       _lives = _maxLives;
@@ -312,7 +320,16 @@ class _MemoryScreenState extends State<MemoryScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text('ZED-9: "$_taunt"', style: const TextStyle(fontSize: 16)),
+      child: Row(
+        children: [
+          ZedFace(mood: _mood, size: 36),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('ZED-9: "$_taunt"',
+                style: const TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
     );
   }
 

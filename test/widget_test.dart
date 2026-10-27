@@ -28,6 +28,7 @@ void main() {
     await pumpApp(tester);
 
     expect(find.text('ZED-9'), findsOneWidget);
+    expect(find.text("ZED'S DARE"), findsOneWidget);
     expect(find.textContaining('ROOKIE'), findsWidgets);
     expect(find.text('Reflex'), findsOneWidget);
   });
