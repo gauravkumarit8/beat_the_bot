@@ -13,7 +13,8 @@ void main() {
     SharedPreferences.setMockInitialValues(prefsValues);
     final prefs = await SharedPreferences.getInstance();
 
-    tester.view.physicalSize = const Size(1170, 2532);
+    // A tall screen, so the whole Home list is built and findable.
+    tester.view.physicalSize = const Size(1170, 6000);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

@@ -363,7 +363,7 @@ class _ZedCard extends StatelessWidget {
                       fontSize: 13, fontWeight: FontWeight.w700),
                 ),
                 if (rank.winStreak + 1 >= RankService.hotStreakFrom)
-                  Text(
+                  const Text(
                     'Hot streak! Every win pays +${RankService.hotStreakBonus} RP',
                     style: const TextStyle(
                         color: AppColors.amber,
@@ -371,7 +371,7 @@ class _ZedCard extends StatelessWidget {
                         fontWeight: FontWeight.w700),
                   ),
                 if (rank.revengeReady)
-                  Text(
+                  const Text(
                     'Revenge bonus ready: +${RankService.revengeBonus} RP',
                     style: const TextStyle(
                         color: AppColors.amber,
