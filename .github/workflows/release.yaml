@@ -79,6 +79,7 @@ jobs:
           beforeSettings { settings ->
             settings.pluginManagement.repositories {
               maven { url = uri('https://repo.maven.apache.org/maven2') }
+              gradlePluginPortal()
             }
           }
           GRADLE
