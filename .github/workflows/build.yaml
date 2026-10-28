@@ -54,6 +54,19 @@ jobs:
             git push || echo "Push skipped"
           fi
 
+      # Gradle's plugin portal mirror sometimes lacks Kotlin artifacts that exist
+      # on Maven Central. This makes Gradle look at Maven Central first for plugins.
+      - name: Prefer Maven Central for Gradle plugins
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/central-first.gradle <<'GRADLE'
+          beforeSettings { settings ->
+            settings.pluginManagement.repositories {
+              maven { url = uri('https://repo.maven.apache.org/maven2') }
+            }
+          }
+          GRADLE
+
       - name: Get packages
         run: flutter pub get
 
