@@ -366,6 +366,17 @@ void main() {
     expect(s.zedWeakened, isFalse);
   });
 
+  test('playing and winning friend challenges is counted', () async {
+    final s = await makeService({});
+    await s.recordChallenge(false);
+    await s.recordChallenge(true);
+    expect(s.challengesPlayed, 2);
+    expect(s.challengesWon, 1);
+    final ids = [for (final a in await s.checkAchievements()) a.id];
+    expect(ids, containsAll(['challenger', 'rival_beaten']));
+    expect(ids, isNot(contains('rival_5')));
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import '../../core/ad_actions.dart';
 import '../../core/ads_service.dart';
 import '../../core/brag.dart';
+import '../../core/challenge.dart';
 import '../../core/difficulty.dart';
 import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
+import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
 import '../../widgets/zed_face.dart';
 
@@ -25,6 +27,7 @@ class PrecisionScreen extends StatefulWidget {
     this.ads,
     this.gauntlet = false,
     this.seed,
+    this.challenge,
   });
 
   final RankService rank;
@@ -35,6 +38,9 @@ class PrecisionScreen extends StatefulWidget {
 
   /// Same seed gives the same target positions (Daily Gauntlet).
   final int? seed;
+
+  /// A friend's challenge to beat. Replays their seed and level.
+  final Challenge? challenge;
 
   @override
   State<PrecisionScreen> createState() => _PrecisionScreenState();
@@ -108,8 +114,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
         Level.hard => 120,
       };
 
-  late final Random _rng =
-      widget.seed == null ? Random() : Random(widget.seed);
+  late int _matchSeed;
   late _ZedAccuracy _zed;
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
@@ -132,10 +137,13 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   @override
   void initState() {
     super.initState();
-    _level = widget.rank.levelFor('precision');
+    _level = widget.challenge?.level ?? widget.rank.levelFor('precision');
+    _reseed();
     _weak = widget.rank.zedWeakened;
     if (_weak) widget.rank.setZedWeakened(false);
     _zed = _ZedAccuracy(_level, penalty: _weak ? 8 : 0);
+    final c = widget.challenge;
+    if (c != null) _taunt = 'Your friend averaged ${c.score}%. Beat that.';
   }
 
   @override
@@ -147,9 +155,15 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   int _avg(List<int> l) =>
       l.isEmpty ? 0 : (l.reduce((a, b) => a + b) / l.length).round();
 
+  void _reseed() {
+    _matchSeed =
+        widget.challenge?.seed ?? widget.seed ?? Random().nextInt(1 << 24);
+  }
+
   void _beginRound() {
     final ms = _startMs - (_round - 1) * _stepMs;
-    _target = 0.15 + _rng.nextDouble() * 0.7;
+    // Same seed and round always give the same target (challenge codes).
+    _target = 0.15 + Random(_matchSeed * 100 + _round).nextDouble() * 0.7;
     _ctrl.duration = Duration(milliseconds: ms);
     _ctrl.repeat(reverse: true);
     setState(() => _phase = _Phase.playing);
@@ -187,6 +201,18 @@ class _PrecisionScreenState extends State<PrecisionScreen>
     final you = _avg(_you);
     final zed = _avg(_zedScores);
     final won = you > zed;
+    final challenge = widget.challenge;
+    if (challenge != null) {
+      final beat = you > challenge.score;
+      await widget.rank.recordChallenge(beat);
+      if (!mounted) return;
+      setState(() {
+        _won = beat;
+        _mood = beat ? ZedMood.shocked : ZedMood.smug;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     await widget.rank.recordResult('precision', _level, won);
     if (widget.gauntlet) {
       if (!mounted) return;
@@ -222,7 +248,8 @@ class _PrecisionScreenState extends State<PrecisionScreen>
 
   void _rematch() {
     _ctrl.stop();
-    _level = widget.rank.levelFor('precision');
+    _level = widget.challenge?.level ?? widget.rank.levelFor('precision');
+    _reseed();
     _weak = widget.rank.zedWeakened;
     if (_weak) widget.rank.setZedWeakened(false);
     _zed = _ZedAccuracy(_level, penalty: _weak ? 8 : 0);
@@ -289,7 +316,8 @@ class _PrecisionScreenState extends State<PrecisionScreen>
 
   Widget _badge() => DifficultyBadge(
         level: _level,
-        auto: widget.rank.difficulty == Difficulty.auto,
+        auto: widget.challenge == null &&
+            widget.rank.difficulty == Difficulty.auto,
       );
 
   Widget _hud() {
@@ -443,6 +471,17 @@ class _PrecisionScreenState extends State<PrecisionScreen>
           ],
         );
       case _Phase.matchOver:
+        final ch = widget.challenge;
+        if (ch != null) {
+          return ChallengeResultPanel(
+            challenge: ch,
+            yourScore: _avg(_you),
+            onBack: () {
+              widget.ads?.showInterstitialIfDue();
+              Navigator.of(context).pop();
+            },
+          );
+        }
         if (widget.gauntlet) return _gauntletPanel();
         final up = _rankedUp;
         return Column(
@@ -485,8 +524,8 @@ class _PrecisionScreenState extends State<PrecisionScreen>
             ],
             if (_won) ...[
               OutlinedButton(
-                onPressed: _brag,
-                child: const Text('COPY BRAG'),
+                onPressed: _challengeFriend,
+                child: const Text('CHALLENGE A FRIEND'),
               ),
               const SizedBox(height: 10),
             ],
@@ -534,7 +573,15 @@ class _PrecisionScreenState extends State<PrecisionScreen>
     );
   }
 
-  void _brag() => copyBrag(context, 'I averaged ${_avg(_you)}% in Precision (${_level.label}) against Zed. Beat the Bot');
+  void _challengeFriend() => copyBrag(
+        context,
+        Challenge(
+          game: 'precision',
+          level: _level,
+          seed: _matchSeed,
+          score: _avg(_you),
+        ).shareText,
+      );
 
   Widget _hint(String text) {
     return SizedBox(

@@ -132,6 +132,15 @@ class RankService {
   /// True after a loss. The next win against Zed pays a revenge bonus.
   bool get revengeReady => _prefs.getBool('revenge') ?? false;
 
+  int get challengesPlayed => _prefs.getInt('challengesPlayed') ?? 0;
+  int get challengesWon => _prefs.getInt('challengesWon') ?? 0;
+
+  /// Call when a friend's challenge code has been played.
+  Future<void> recordChallenge(bool won) async {
+    await _prefs.setInt('challengesPlayed', challengesPlayed + 1);
+    if (won) await _prefs.setInt('challengesWon', challengesWon + 1);
+  }
+
   bool dareDone(DateTime now) => _prefs.getString('dareDay') == _key(now);
 
   Future<void> _queueNotice(String message) async {

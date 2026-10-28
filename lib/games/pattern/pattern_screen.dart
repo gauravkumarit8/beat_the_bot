@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import '../../core/ad_actions.dart';
 import '../../core/ads_service.dart';
 import '../../core/brag.dart';
+import '../../core/challenge.dart';
 import '../../core/difficulty.dart';
 import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
+import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
 import '../../widgets/zed_face.dart';
 import 'pattern_generator.dart';
@@ -25,6 +27,7 @@ class PatternScreen extends StatefulWidget {
     this.ads,
     this.gauntlet = false,
     this.seed,
+    this.challenge,
   });
 
   final RankService rank;
@@ -35,6 +38,9 @@ class PatternScreen extends StatefulWidget {
 
   /// Same seed gives the same puzzles (Daily Gauntlet).
   final int? seed;
+
+  /// A friend's challenge to beat. Replays their seed and level.
+  final Challenge? challenge;
 
   @override
   State<PatternScreen> createState() => _PatternScreenState();
@@ -72,9 +78,9 @@ class _PatternScreenState extends State<PatternScreen>
         Level.hard => const Duration(seconds: 9),
       };
 
-  late final Random _rng =
-      widget.seed == null ? Random() : Random(widget.seed);
-  late final PatternGenerator _gen = PatternGenerator(_rng);
+  late Random _rng;
+  late PatternGenerator _gen;
+  late int _matchSeed;
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 12),
@@ -98,10 +104,13 @@ class _PatternScreenState extends State<PatternScreen>
   @override
   void initState() {
     super.initState();
-    _level = widget.rank.levelFor('pattern');
+    _level = widget.challenge?.level ?? widget.rank.levelFor('pattern');
+    _reseed();
     _weak = widget.rank.zedWeakened;
     if (_weak) widget.rank.setZedWeakened(false);
     _ctrl.duration = _timeLimit;
+    final c = widget.challenge;
+    if (c != null) _taunt = 'Your friend scored ${c.score}. Beat that.';
     _ctrl.addStatusListener((status) {
       if (status == AnimationStatus.completed && _phase == _Phase.asking) {
         _answer(null);
@@ -113,6 +122,13 @@ class _PatternScreenState extends State<PatternScreen>
   void dispose() {
     _ctrl.dispose();
     super.dispose();
+  }
+
+  void _reseed() {
+    _matchSeed =
+        widget.challenge?.seed ?? widget.seed ?? Random().nextInt(1 << 24);
+    _rng = Random(_matchSeed);
+    _gen = PatternGenerator(_rng);
   }
 
   void _startQuestion() {
@@ -163,6 +179,18 @@ class _PatternScreenState extends State<PatternScreen>
 
   Future<void> _finish() async {
     final won = _youTotal > _zedTotal;
+    final challenge = widget.challenge;
+    if (challenge != null) {
+      final beat = _youTotal > challenge.score;
+      await widget.rank.recordChallenge(beat);
+      if (!mounted) return;
+      setState(() {
+        _won = beat;
+        _mood = beat ? ZedMood.shocked : ZedMood.smug;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     await widget.rank.recordResult('pattern', _level, won);
     if (widget.gauntlet) {
       if (!mounted) return;
@@ -198,7 +226,8 @@ class _PatternScreenState extends State<PatternScreen>
 
   void _rematch() {
     _ctrl.stop();
-    _level = widget.rank.levelFor('pattern');
+    _level = widget.challenge?.level ?? widget.rank.levelFor('pattern');
+    _reseed();
     _weak = widget.rank.zedWeakened;
     if (_weak) widget.rank.setZedWeakened(false);
     _ctrl.duration = _timeLimit;
@@ -258,7 +287,8 @@ class _PatternScreenState extends State<PatternScreen>
 
   Widget _badge() => DifficultyBadge(
         level: _level,
-        auto: widget.rank.difficulty == Difficulty.auto,
+        auto: widget.challenge == null &&
+            widget.rank.difficulty == Difficulty.auto,
       );
 
   Widget _hud() {
@@ -443,6 +473,17 @@ class _PatternScreenState extends State<PatternScreen>
           ],
         );
       case _Phase.matchOver:
+        final ch = widget.challenge;
+        if (ch != null) {
+          return ChallengeResultPanel(
+            challenge: ch,
+            yourScore: _youTotal,
+            onBack: () {
+              widget.ads?.showInterstitialIfDue();
+              Navigator.of(context).pop();
+            },
+          );
+        }
         if (widget.gauntlet) return _gauntletPanel();
         final up = _rankedUp;
         return Column(
@@ -494,8 +535,8 @@ class _PatternScreenState extends State<PatternScreen>
             ],
             if (_won) ...[
               OutlinedButton(
-                onPressed: _brag,
-                child: const Text('COPY BRAG'),
+                onPressed: _challengeFriend,
+                child: const Text('CHALLENGE A FRIEND'),
               ),
               const SizedBox(height: 10),
             ],
@@ -543,7 +584,15 @@ class _PatternScreenState extends State<PatternScreen>
     );
   }
 
-  void _brag() => copyBrag(context, 'I scored $_youTotal in Pattern (${_level.label}) against Zed. Beat the Bot');
+  void _challengeFriend() => copyBrag(
+        context,
+        Challenge(
+          game: 'pattern',
+          level: _level,
+          seed: _matchSeed,
+          score: _youTotal,
+        ).shareText,
+      );
 
   Widget _hint(String text) {
     return SizedBox(

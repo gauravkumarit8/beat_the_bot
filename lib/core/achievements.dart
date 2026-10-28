@@ -89,6 +89,24 @@ final List<Achievement> allAchievements = [
     isMet: (r) => r.perfectGauntlets >= 1,
   ),
   Achievement(
+    id: 'challenger',
+    title: 'Challenger',
+    description: "Play a friend's challenge code.",
+    isMet: (r) => r.challengesPlayed >= 1,
+  ),
+  Achievement(
+    id: 'rival_beaten',
+    title: 'Friendly fire',
+    description: "Beat a friend's challenge score.",
+    isMet: (r) => r.challengesWon >= 1,
+  ),
+  Achievement(
+    id: 'rival_5',
+    title: 'Local legend',
+    description: "Beat 5 friends' challenge scores.",
+    isMet: (r) => r.challengesWon >= 5,
+  ),
+  Achievement(
     id: 'reflex_250',
     title: 'Lightning',
     description: 'React in under 250 ms.',

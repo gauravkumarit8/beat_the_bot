@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../core/ads_service.dart';
+import '../core/challenge.dart';
 import '../core/dare.dart';
 import '../core/difficulty.dart';
 import '../core/zed_voice.dart';
+import '../widgets/challenge_dialog.dart';
 import '../widgets/zed_face.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
@@ -137,6 +139,26 @@ class _HomeScreenState extends State<HomeScreen> {
     await _afterRoute();
   }
 
+  Future<void> _enterChallenge() async {
+    final challenge = await showDialog<Challenge>(
+      context: context,
+      builder: (_) => const ChallengeCodeDialog(),
+    );
+    if (challenge == null || !mounted) return;
+    final Widget screen = switch (challenge.game) {
+      'memory' =>
+        MemoryScreen(rank: widget.rank, ads: widget.ads, challenge: challenge),
+      'precision' => PrecisionScreen(
+          rank: widget.rank, ads: widget.ads, challenge: challenge),
+      _ =>
+        PatternScreen(rank: widget.rank, ads: widget.ads, challenge: challenge),
+    };
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => screen),
+    );
+    await _afterRoute();
+  }
+
   Future<void> _setDifficulty(Difficulty d) async {
     await widget.rank.setDifficulty(d);
     if (mounted) setState(() {});
@@ -251,6 +273,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: _enterChallenge,
+              icon: const Icon(Icons.group_add_rounded),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('ENTER CHALLENGE CODE'),
+              ),
             ),
           ],
         ),

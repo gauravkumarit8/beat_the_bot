@@ -1,3 +1,4 @@
+import 'package:beat_the_bot/core/challenge.dart';
 import 'package:beat_the_bot/core/difficulty.dart';
 import 'package:beat_the_bot/core/rank_service.dart';
 import 'package:beat_the_bot/main.dart';
@@ -70,6 +71,34 @@ void main() {
     expect(find.textContaining('Weekly ladder'), findsOneWidget);
     await tester.scrollUntilVisible(find.textContaining('Achievements'), 300);
     expect(find.textContaining('Achievements'), findsOneWidget);
+  });
+
+  testWidgets('challenge dialog rejects a bad code', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('ENTER CHALLENGE CODE'));
+    await tester.pumpAndSettle();
+    expect(find.text('Challenge code'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'nonsense');
+    await tester.tap(find.text('PLAY'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('That code does not look right.'), findsOneWidget);
+  });
+
+  testWidgets('a valid challenge code opens that game', (tester) async {
+    await pumpApp(tester);
+    const c =
+        Challenge(game: 'memory', level: Level.easy, seed: 5, score: 7);
+
+    await tester.tap(find.text('ENTER CHALLENGE CODE'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), c.code);
+    await tester.tap(find.text('PLAY'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Your friend held 7 tiles'), findsOneWidget);
   });
 
   testWidgets('settings can switch vibration off', (tester) async {

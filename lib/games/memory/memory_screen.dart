@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import '../../core/ad_actions.dart';
 import '../../core/ads_service.dart';
 import '../../core/brag.dart';
+import '../../core/challenge.dart';
 import '../../core/difficulty.dart';
 import '../../core/haptics.dart';
 import '../../core/game_result.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
+import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
 import '../../widgets/zed_face.dart';
 
@@ -26,6 +28,7 @@ class MemoryScreen extends StatefulWidget {
     this.ads,
     this.gauntlet = false,
     this.seed,
+    this.challenge,
   });
 
   final RankService rank;
@@ -36,6 +39,9 @@ class MemoryScreen extends StatefulWidget {
 
   /// Same seed gives the same tile patterns (used by the Daily Gauntlet).
   final int? seed;
+
+  /// A friend's challenge to beat. Replays their seed and level.
+  final Challenge? challenge;
 
   @override
   State<MemoryScreen> createState() => _MemoryScreenState();
@@ -66,8 +72,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
         Level.hard => 380,
       };
 
-  late final Random _rng =
-      widget.seed == null ? Random() : Random(widget.seed);
+  late int _matchSeed;
   int _attempt = 0;
   late int _zedCap;
   String _taunt = '';
@@ -89,7 +94,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
   @override
   void initState() {
     super.initState();
-    _level = widget.rank.levelFor('memory');
+    _level = widget.challenge?.level ?? widget.rank.levelFor('memory');
+    _reseed();
     _len = _startLen;
     _lives = _maxLives;
     _weak = widget.rank.zedWeakened;
@@ -103,6 +109,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
     super.dispose();
   }
 
+  void _reseed() {
+    _matchSeed =
+        widget.challenge?.seed ?? widget.seed ?? Random().nextInt(1 << 24);
+  }
+
   /// Same Zed capacity for everyone on the same day (plus rematch number).
   void _pickZed() {
     final seed = DailyTwist.seedForDate(DateTime.now()) * 31 + _attempt;
@@ -114,16 +125,24 @@ class _MemoryScreenState extends State<MemoryScreen> {
     final span = _level == Level.medium ? 3 : 2;
     _zedCap = base + Random(seed).nextInt(span);
     if (_weak && _zedCap > 3) _zedCap -= 1;
-    _taunt = 'I hold $_zedCap tiles. Show me you can hold more.';
+    final c = widget.challenge;
+    // In a friend's challenge there is no cap: hold as many tiles as you can.
+    if (c != null) _zedCap = 99;
+    _taunt = c != null
+        ? 'Your friend held ${c.score} tiles. Beat that.'
+        : 'I hold $_zedCap tiles. Show me you can hold more.';
   }
 
   Future<void> _startLevel() async {
     final run = ++_run;
     final seq = <int>[];
+    // The same seed and length always give the same pattern, so a friend who
+    // plays your challenge code sees exactly what you saw.
+    final rng = Random(_matchSeed * 1000 + _len);
     for (var i = 0; i < _len; i++) {
-      var t = _rng.nextInt(_tiles);
+      var t = rng.nextInt(_tiles);
       while (i > 0 && t == seq[i - 1]) {
-        t = _rng.nextInt(_tiles);
+        t = rng.nextInt(_tiles);
       }
       seq.add(t);
     }
@@ -215,7 +234,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
   /// Not offered inside the Daily Gauntlet, so everyone plays it the same.
   Future<bool> _offerContinue() async {
     final ads = widget.ads;
-    if (ads == null || widget.gauntlet || _usedContinue || !mounted) {
+    if (ads == null ||
+        widget.gauntlet ||
+        widget.challenge != null ||
+        _usedContinue ||
+        !mounted) {
       return false;
     }
     final wants = await showDialog<bool>(
@@ -257,6 +280,18 @@ class _MemoryScreenState extends State<MemoryScreen> {
   }
 
   Future<void> _finishMatch({required bool won}) async {
+    final challenge = widget.challenge;
+    if (challenge != null) {
+      final beat = _bestCleared > challenge.score;
+      await widget.rank.recordChallenge(beat);
+      if (!mounted) return;
+      setState(() {
+        _won = beat;
+        _mood = beat ? ZedMood.shocked : ZedMood.smug;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     await widget.rank.recordResult('memory', _level, won);
     if (widget.gauntlet) {
       if (!mounted) return;
@@ -293,7 +328,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
   void _rematch() {
     _run++;
     _attempt++;
-    _level = widget.rank.levelFor('memory');
+    _level = widget.challenge?.level ?? widget.rank.levelFor('memory');
+    _reseed();
     _weak = widget.rank.zedWeakened;
     if (_weak) widget.rank.setZedWeakened(false);
     _usedContinue = false;
@@ -338,7 +374,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
   Widget _badge() => DifficultyBadge(
         level: _level,
-        auto: widget.rank.difficulty == Difficulty.auto,
+        auto: widget.challenge == null &&
+            widget.rank.difficulty == Difficulty.auto,
       );
 
   Widget _hud() {
@@ -457,6 +494,17 @@ class _MemoryScreenState extends State<MemoryScreen> {
             ? 'Wrong tile! $_lives ${_lives == 1 ? 'life' : 'lives'} left'
             : 'Nice! Next level...');
       case _Phase.matchOver:
+        final ch = widget.challenge;
+        if (ch != null) {
+          return ChallengeResultPanel(
+            challenge: ch,
+            yourScore: _bestCleared,
+            onBack: () {
+              widget.ads?.showInterstitialIfDue();
+              Navigator.of(context).pop();
+            },
+          );
+        }
         if (widget.gauntlet) return _gauntletPanel();
         final up = _rankedUp;
         return Column(
@@ -501,8 +549,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
             ],
             if (_won) ...[
               OutlinedButton(
-                onPressed: _brag,
-                child: const Text('COPY BRAG'),
+                onPressed: _challengeFriend,
+                child: const Text('CHALLENGE A FRIEND'),
               ),
               const SizedBox(height: 10),
             ],
@@ -550,7 +598,15 @@ class _MemoryScreenState extends State<MemoryScreen> {
     );
   }
 
-  void _brag() => copyBrag(context, 'I held $_bestCleared tiles in Memory against Zed (${_level.label}). Beat that. Beat the Bot');
+  void _challengeFriend() => copyBrag(
+        context,
+        Challenge(
+          game: 'memory',
+          level: _level,
+          seed: _matchSeed,
+          score: _bestCleared,
+        ).shareText,
+      );
 
   Widget _hint(String text) {
     return SizedBox(
