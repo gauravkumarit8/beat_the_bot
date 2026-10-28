@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'achievements.dart';
 import 'dare.dart';
+import 'zed_skins.dart';
 import 'difficulty.dart';
 
 enum Rank { rookie, sharp, elite, master, legend }
@@ -101,6 +102,7 @@ class RankService {
     for (final key in _prefs.getKeys().toList()) {
       if (!keep.contains(key)) await _prefs.remove(key);
     }
+    ZedSkins.current = ZedSkins.all.first;
   }
 
   // ---- Rivalry: record, revenge, dare, notices ------------------------------
@@ -155,6 +157,48 @@ class RankService {
     return list;
   }
 
+  // ---- Days played, streak milestones, skins --------------------------------
+
+  static const List<int> streakMilestones = [7, 14, 30, 60, 100];
+
+  /// Days the player showed up (last 120), as "yyyy-MM-dd" keys.
+  Set<String> playDays() =>
+      (_prefs.getStringList('playDays') ?? const <String>[]).toSet();
+
+  Future<void> _markPlayDay(DateTime day) async {
+    final sorted = (playDays()..add(_key(day))).toList()..sort();
+    final kept =
+        sorted.length > 120 ? sorted.sublist(sorted.length - 120) : sorted;
+    await _prefs.setStringList('playDays', kept);
+  }
+
+  /// The highest streak milestone reached but not celebrated yet, or null.
+  Future<int?> takeStreakMilestone() async {
+    final done = _prefs.getInt('celebratedStreak') ?? 0;
+    int? hit;
+    for (final m in streakMilestones) {
+      if (streak >= m && m > done) hit = m;
+    }
+    if (hit != null) await _prefs.setInt('celebratedStreak', hit);
+    return hit;
+  }
+
+  bool isSkinUnlocked(ZedSkin skin) =>
+      skin.unlockedBy == null || unlockedAchievements.contains(skin.unlockedBy);
+
+  /// The chosen skin, or Classic if the choice is not unlocked.
+  ZedSkin get activeSkin {
+    final skin = ZedSkins.byId(_prefs.getString('skin'));
+    return isSkinUnlocked(skin) ? skin : ZedSkins.all.first;
+  }
+
+  Future<void> setSkin(String id) async {
+    final skin = ZedSkins.byId(id);
+    if (!isSkinUnlocked(skin)) return;
+    await _prefs.setString('skin', skin.id);
+    ZedSkins.current = skin;
+  }
+
   // ---- Achievements -------------------------------------------------------
 
   int get totalWins => _prefs.getInt('totalWins') ?? 0;
@@ -165,6 +209,10 @@ class RankService {
 
   Future<void> _setStreak(int value) async {
     await _prefs.setInt('streak', value);
+    // A broken streak can be celebrated again when it is rebuilt.
+    if (value < (_prefs.getInt('celebratedStreak') ?? 0)) {
+      await _prefs.setInt('celebratedStreak', 0);
+    }
     if (value > bestStreak) await _prefs.setInt('bestStreak', value);
   }
 
@@ -400,6 +448,7 @@ class RankService {
     if (last == null) {
       await _prefs.setString('lastPlayed', _key(today));
       await _setStreak(1);
+      await _markPlayDay(today);
       return null;
     }
 
@@ -432,6 +481,7 @@ class RankService {
     final keepStreak = missed == 0 || usedFreeze || missed == 1;
     await _setStreak(keepStreak ? streak + 1 : 1);
     await _prefs.setString('lastPlayed', _key(today));
+    await _markPlayDay(today);
 
     return ReturnResult(
       missedDays: missed,

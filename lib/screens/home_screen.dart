@@ -5,6 +5,7 @@ import '../core/challenge.dart';
 import '../core/dare.dart';
 import '../core/difficulty.dart';
 import '../core/zed_voice.dart';
+import '../widgets/celebration.dart';
 import '../widgets/challenge_dialog.dart';
 import '../widgets/zed_face.dart';
 import '../core/rank_service.dart';
@@ -29,10 +30,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _missed = 0;
+  int _lastRankIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _lastRankIndex = widget.rank.rank.index;
     _onOpen();
   }
 
@@ -40,10 +43,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = await widget.rank.onAppOpen(DateTime.now());
     if (!mounted) return;
     setState(() => _missed = result?.missedDays ?? 0);
+    _lastRankIndex = widget.rank.rank.index;
     if (result != null && (result.rankDropped || result.usedFreeze)) {
       await showDialog<void>(
         context: context,
         builder: (_) => _ReturnDialog(result: result),
+      );
+    }
+    final milestone = await widget.rank.takeStreakMilestone();
+    if (milestone != null && mounted) {
+      await showCelebration(
+        context,
+        title: 'STREAK MILESTONE',
+        badge: '$milestone DAYS',
+        subtitle: '$milestone days in a row. Zed is getting nervous.',
       );
     }
   }
@@ -97,6 +110,17 @@ class _HomeScreenState extends State<HomeScreen> {
           content: Text(lines.join('\n')),
           duration: const Duration(seconds: 5),
         ),
+      );
+    }
+    final current = widget.rank.rank;
+    final climbed = current.index > _lastRankIndex;
+    _lastRankIndex = current.index;
+    if (climbed) {
+      await showCelebration(
+        context,
+        title: 'RANK UP',
+        badge: current.name.toUpperCase(),
+        subtitle: 'You are now ${current.name.toUpperCase()}. Zed noticed.',
       );
     }
   }

@@ -1,5 +1,6 @@
 import 'package:beat_the_bot/core/dare.dart';
 import 'package:beat_the_bot/core/difficulty.dart';
+import 'package:beat_the_bot/core/zed_skins.dart';
 import 'package:beat_the_bot/core/rank_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -375,6 +376,44 @@ void main() {
     final ids = [for (final a in await s.checkAchievements()) a.id];
     expect(ids, containsAll(['challenger', 'rival_beaten']));
     expect(ids, isNot(contains('rival_5')));
+  });
+
+  test('days you showed up are remembered once each', () async {
+    final s = await makeService({});
+    await s.onAppOpen(DateTime(2026, 10, 1));
+    await s.onAppOpen(DateTime(2026, 10, 2));
+    await s.onAppOpen(DateTime(2026, 10, 2));
+    expect(s.playDays(), {'2026-10-01', '2026-10-02'});
+  });
+
+  test('a streak milestone is celebrated once', () async {
+    final s = await makeService({'streak': 7});
+    expect(await s.takeStreakMilestone(), 7);
+    expect(await s.takeStreakMilestone(), isNull);
+  });
+
+  test('the highest milestone reached is the one celebrated', () async {
+    final s = await makeService({'streak': 31});
+    expect(await s.takeStreakMilestone(), 30);
+    expect(await s.takeStreakMilestone(), isNull);
+  });
+
+  test('skins unlock with achievements and fall back to Classic', () async {
+    final locked = await makeService({});
+    expect(locked.isSkinUnlocked(ZedSkins.byId('ice')), isFalse);
+    await locked.setSkin('ice');
+    expect(locked.activeSkin.id, 'classic');
+
+    final s = await makeService({
+      'achievements': ['streak_7'],
+    });
+    await s.setSkin('ice');
+    expect(s.activeSkin.id, 'ice');
+    expect(ZedSkins.current.id, 'ice');
+
+    await s.resetProgress();
+    expect(s.activeSkin.id, 'classic');
+    expect(ZedSkins.current.id, 'classic');
   });
 
   test('daily twist is the same for the same date', () {

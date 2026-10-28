@@ -68,6 +68,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Brain age'), findsOneWidget);
+    expect(find.textContaining("Zed's look"), findsOneWidget);
+    expect(find.text('Days you showed up'), findsOneWidget);
     expect(find.textContaining('Weekly ladder'), findsOneWidget);
     await tester.scrollUntilVisible(find.textContaining('Achievements'), 300);
     expect(find.textContaining('Achievements'), findsOneWidget);

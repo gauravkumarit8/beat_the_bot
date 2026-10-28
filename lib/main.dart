@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/ads_service.dart';
 import 'core/haptics.dart';
 import 'core/rank_service.dart';
+import 'core/zed_skins.dart';
 import 'core/theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -17,6 +18,7 @@ Future<void> main() async {
   unawaited(ads.init());
   final rank = RankService(prefs);
   Haptics.enabled = rank.vibrationOn;
+  ZedSkins.current = rank.activeSkin;
   runApp(BeatTheBotApp(rank: rank, ads: ads));
 }
 

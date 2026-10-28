@@ -4,6 +4,9 @@ import '../core/achievements.dart';
 import '../core/ads_service.dart';
 import '../core/progress.dart';
 import '../core/rank_service.dart';
+import '../core/zed_skins.dart';
+import '../core/zed_voice.dart';
+import '../widgets/zed_face.dart';
 import '../core/theme.dart';
 
 /// Shows how the player is improving, plus a weekly ladder against bots.
@@ -79,6 +82,10 @@ class ProgressScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
+            _card(child: _SkinPicker(rank: rank)),
+            const SizedBox(height: 14),
+            _card(child: _calendar(now)),
+            const SizedBox(height: 14),
             _card(child: _chart(now)),
             const SizedBox(height: 14),
             _card(child: _skills()),
@@ -100,6 +107,72 @@ class ProgressScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: child,
+    );
+  }
+
+  Widget _calendar(DateTime now) {
+    final played = rank.playDays();
+    final today = DateTime(now.year, now.month, now.day);
+    // Five weeks, Monday first, ending with the current week.
+    final first = DateTime(today.year, today.month, today.day - (today.weekday - 1) - 28);
+    var count = 0;
+    final rows = <Widget>[];
+    for (var w = 0; w < 5; w++) {
+      final cells = <Widget>[];
+      for (var d = 0; d < 7; d++) {
+        final day = DateTime(first.year, first.month, first.day + w * 7 + d);
+        final isFuture = day.isAfter(today);
+        final isToday = day == today;
+        final showed = played.contains(RankService.dayKey(day));
+        if (showed) count++;
+        cells.add(
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Container(
+                margin: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: isFuture
+                      ? Colors.transparent
+                      : (showed ? AppColors.lime : AppColors.line),
+                  borderRadius: BorderRadius.circular(8),
+                  border: isToday
+                      ? Border.all(color: AppColors.text, width: 2)
+                      : (isFuture
+                          ? Border.all(color: AppColors.line, width: 1)
+                          : null),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+      rows.add(Row(children: cells));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Days you showed up',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        const SizedBox(height: 2),
+        Text('$count of the last 5 weeks',
+            style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            for (final l in _dayLetters)
+              Expanded(
+                child: Center(
+                  child: Text(l,
+                      style: const TextStyle(
+                          color: AppColors.muted, fontSize: 11)),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ...rows,
+      ],
     );
   }
 
@@ -312,6 +385,90 @@ class ProgressScreen extends StatelessWidget {
               style: const TextStyle(color: AppColors.muted, fontSize: 13)),
         ],
       ),
+    );
+  }
+}
+
+/// Lets the player pick Zed's look from the skins they have unlocked.
+class _SkinPicker extends StatefulWidget {
+  const _SkinPicker({required this.rank});
+
+  final RankService rank;
+
+  @override
+  State<_SkinPicker> createState() => _SkinPickerState();
+}
+
+class _SkinPickerState extends State<_SkinPicker> {
+  Future<void> _choose(ZedSkin skin) async {
+    if (!widget.rank.isSkinUnlocked(skin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Locked. ${skin.hint}')),
+      );
+      return;
+    }
+    await widget.rank.setSkin(skin.id);
+    if (mounted) setState(() {});
+  }
+
+  Widget _tile(ZedSkin skin) {
+    final unlocked = widget.rank.isSkinUnlocked(skin);
+    final active = widget.rank.activeSkin.id == skin.id;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => _choose(skin),
+      child: Container(
+        width: 96,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: active ? AppColors.lime : AppColors.line,
+            width: active ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Opacity(
+              opacity: unlocked ? 1 : 0.4,
+              child: ZedFace(mood: ZedMood.neutral, size: 44, skin: skin),
+            ),
+            const SizedBox(height: 6),
+            Text(skin.name,
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+            Text(
+              active ? 'ACTIVE' : (unlocked ? 'TAP TO USE' : 'LOCKED'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: active ? AppColors.lime : AppColors.muted,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Zed's look",
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        const SizedBox(height: 2),
+        const Text('Unlock new looks with achievements.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [for (final s in ZedSkins.all) _tile(s)],
+        ),
+      ],
     );
   }
 }
