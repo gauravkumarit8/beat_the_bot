@@ -4,6 +4,7 @@ import '../core/achievements.dart';
 import '../core/ads_service.dart';
 import '../core/progress.dart';
 import '../core/rank_service.dart';
+import '../core/weekly_goals.dart';
 import '../core/zed_skins.dart';
 import '../core/zed_voice.dart';
 import '../widgets/zed_face.dart';
@@ -32,69 +33,172 @@ class ProgressScreen extends StatelessWidget {
     final ladder = buildLadder(now: now, yourPoints: rank.weeklyPoints(now));
 
     final adsService = ads;
-    return Scaffold(
-      bottomNavigationBar:
-          adsService == null ? null : AdBanner(ads: adsService),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                tooltip: 'Back',
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
+    final brainAgeCard = _card(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(age == null ? '--' : '$age',
+              style: const TextStyle(
+                  fontSize: 56,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.lime)),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Brain age',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                SizedBox(height: 2),
+                Text(
+                  'Just for fun. Based on your best results, and it '
+                  'gets younger as you improve.',
+                  style: TextStyle(
+                      color: AppColors.muted, fontSize: 13, height: 1.35),
+                ),
+              ],
             ),
-            const Text('Progress',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 18),
-            _card(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(age == null ? '--' : '$age',
-                      style: const TextStyle(
-                          fontSize: 56,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.lime)),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Brain age',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w700)),
-                        SizedBox(height: 2),
-                        Text(
-                          'Just for fun. Based on your best results, and it '
-                          'gets younger as you improve.',
-                          style: TextStyle(
-                              color: AppColors.muted, fontSize: 13, height: 1.35),
-                        ),
-                      ],
+          ),
+        ],
+      ),
+    );
+
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        bottomNavigationBar:
+            adsService == null ? null : AdBanner(ads: adsService),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      tooltip: 'Back',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back_rounded),
                     ),
-                  ),
+                    const Text('Progress',
+                        style: TextStyle(
+                            fontSize: 32, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+              const TabBar(
+                labelColor: AppColors.lime,
+                unselectedLabelColor: AppColors.muted,
+                indicatorColor: AppColors.lime,
+                dividerColor: AppColors.line,
+                tabs: [
+                  Tab(text: 'Overview'),
+                  Tab(text: 'Stats'),
+                  Tab(text: 'Badges'),
                 ],
               ),
-            ),
-            const SizedBox(height: 14),
-            _card(child: _SkinPicker(rank: rank)),
-            const SizedBox(height: 14),
-            _card(child: _calendar(now)),
-            const SizedBox(height: 14),
-            _card(child: _chart(now)),
-            const SizedBox(height: 14),
-            _card(child: _skills()),
-            const SizedBox(height: 14),
-            _card(child: _ladder(ladder)),
-            const SizedBox(height: 14),
-            _card(child: _achievements()),
-          ],
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _tab([
+                      brainAgeCard,
+                      _card(child: _goals(now)),
+                      _card(child: _SkinPicker(rank: rank)),
+                      _card(child: _calendar(now)),
+                    ]),
+                    _tab([
+                      _card(child: _chart(now)),
+                      _card(child: _skills()),
+                      _card(child: _ladder(ladder)),
+                    ]),
+                    _tab([_card(child: _achievements())]),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _tab(List<Widget> cards) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      children: [
+        for (var i = 0; i < cards.length; i++) ...[
+          if (i > 0) const SizedBox(height: 14),
+          cards[i],
+        ],
+      ],
+    );
+  }
+
+  Widget _goals(DateTime now) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("This week's goals",
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        const SizedBox(height: 2),
+        const Text('Reset every Monday. Each pays rank points once.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13)),
+        const SizedBox(height: 12),
+        for (final goal in weeklyGoals) _goalRow(goal, now),
+      ],
+    );
+  }
+
+  Widget _goalRow(WeeklyGoal goal, DateTime now) {
+    final done = rank.weeklyGoalClaimed(goal.id, now);
+    final rawProgress = rank.weeklyGoalProgress(goal.id, now);
+    final progress = rawProgress > goal.target ? goal.target : rawProgress;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(goal.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                done ? 'DONE' : '+${goal.reward} RP',
+                style: TextStyle(
+                  color: done ? AppColors.lime : AppColors.amber,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: LinearProgressIndicator(
+                    value: progress / goal.target,
+                    minHeight: 10,
+                    backgroundColor: AppColors.line,
+                    color: done ? AppColors.lime : AppColors.amber,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text('$progress / ${goal.target}',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+            ],
+          ),
+        ],
       ),
     );
   }

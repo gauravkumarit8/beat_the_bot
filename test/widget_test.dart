@@ -61,17 +61,27 @@ void main() {
     expect(find.text('ZED-9'), findsOneWidget);
   });
 
-  testWidgets('progress screen opens and shows brain age', (tester) async {
+  testWidgets('progress screen has three tabs with their cards',
+      (tester) async {
     await pumpApp(tester);
 
     await tester.tap(find.byIcon(Icons.insights_rounded));
     await tester.pumpAndSettle();
 
+    // Overview tab
     expect(find.text('Brain age'), findsOneWidget);
+    expect(find.textContaining("This week's goals"), findsOneWidget);
     expect(find.textContaining("Zed's look"), findsOneWidget);
     expect(find.text('Days you showed up'), findsOneWidget);
+
+    // Stats tab
+    await tester.tap(find.text('Stats'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Weekly ladder'), findsOneWidget);
-    await tester.scrollUntilVisible(find.textContaining('Achievements'), 300);
+
+    // Badges tab
+    await tester.tap(find.text('Badges'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Achievements'), findsOneWidget);
   });
 

@@ -416,6 +416,56 @@ void main() {
     expect(ZedSkins.current.id, 'classic');
   });
 
+  test('ten wins in a week finish the wins goal once', () async {
+    final s = await makeService({});
+    final monday = DateTime(2026, 10, 19);
+    final dareGame = dareForDay(monday).game;
+    final game = ['reflex', 'memory', 'precision', 'pattern']
+        .firstWhere((g) => g != dareGame);
+    for (var i = 0; i < 9; i++) {
+      await s.recordResult(game, Level.medium, true, now: monday);
+    }
+    expect(s.weeklyGoalProgress('wins10', monday), 9);
+    expect(s.weeklyGoalClaimed('wins10', monday), isFalse);
+    await s.recordResult(game, Level.medium, true, now: monday);
+    expect(s.weeklyGoalClaimed('wins10', monday), isTrue);
+    final notices = await s.takeNotices();
+    expect(notices.where((n) => n.contains('Weekly goal done')).length, 1);
+    await s.recordResult(game, Level.medium, true, now: monday);
+    expect((await s.takeNotices()).where((n) => n.contains('Weekly goal')),
+        isEmpty);
+  });
+
+  test('beating Zed in all four games finishes that goal', () async {
+    final s = await makeService({});
+    final tuesday = DateTime(2026, 10, 20);
+    for (final g in ['reflex', 'memory', 'precision']) {
+      await s.recordResult(g, Level.medium, true, now: tuesday);
+    }
+    expect(s.weeklyGoalProgress('all_games', tuesday), 3);
+    expect(s.weeklyGoalClaimed('all_games', tuesday), isFalse);
+    await s.recordResult('pattern', Level.medium, true, now: tuesday);
+    expect(s.weeklyGoalClaimed('all_games', tuesday), isTrue);
+  });
+
+  test('Gauntlet on three different days finishes that goal', () async {
+    final s = await makeService({});
+    await s.onGauntletDone(DateTime(2026, 10, 19), 2, 400);
+    await s.onGauntletDone(DateTime(2026, 10, 19), 2, 400); // same day
+    await s.onGauntletDone(DateTime(2026, 10, 20), 2, 400);
+    expect(s.weeklyGoalProgress('gauntlet3', DateTime(2026, 10, 20)), 2);
+    await s.onGauntletDone(DateTime(2026, 10, 21), 2, 400);
+    expect(s.weeklyGoalClaimed('gauntlet3', DateTime(2026, 10, 21)), isTrue);
+  });
+
+  test('goals start fresh on a new week', () async {
+    final s = await makeService({});
+    await s.recordResult('reflex', Level.medium, true,
+        now: DateTime(2026, 10, 22));
+    expect(s.weeklyGoalProgress('wins10', DateTime(2026, 10, 22)), 1);
+    expect(s.weeklyGoalProgress('wins10', DateTime(2026, 10, 26)), 0);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

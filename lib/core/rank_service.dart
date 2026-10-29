@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'achievements.dart';
 import 'dare.dart';
+import 'weekly_goals.dart';
 import 'zed_skins.dart';
 import 'difficulty.dart';
 
@@ -155,6 +156,50 @@ class RankService {
     final list = _prefs.getStringList('notices') ?? <String>[];
     if (list.isNotEmpty) await _prefs.remove('notices');
     return list;
+  }
+
+  // ---- Weekly goals -------------------------------------------------------
+
+  bool _goalWeekIs(DateTime now) =>
+      _prefs.getString('goalWeek') == _key(weekStart(now));
+
+  Future<void> _ensureGoalWeek(DateTime now) async {
+    if (_goalWeekIs(now)) return;
+    await _prefs.setString('goalWeek', _key(weekStart(now)));
+    await _prefs.setInt('goalWins', 0);
+    await _prefs.setStringList('goalGames', <String>[]);
+    await _prefs.setInt('goalGauntlets', 0);
+    await _prefs.setStringList('goalClaimed', <String>[]);
+  }
+
+  /// How far along a weekly goal is this week.
+  int weeklyGoalProgress(String id, DateTime now) {
+    if (!_goalWeekIs(now)) return 0;
+    switch (id) {
+      case 'wins10':
+        return _prefs.getInt('goalWins') ?? 0;
+      case 'all_games':
+        return (_prefs.getStringList('goalGames') ?? const <String>[]).length;
+      case 'gauntlet3':
+        return _prefs.getInt('goalGauntlets') ?? 0;
+    }
+    return 0;
+  }
+
+  bool weeklyGoalClaimed(String id, DateTime now) =>
+      _goalWeekIs(now) &&
+      (_prefs.getStringList('goalClaimed') ?? const <String>[]).contains(id);
+
+  /// Pays every finished goal once and queues a message for Home.
+  Future<void> _checkWeeklyGoals(DateTime now) async {
+    for (final goal in weeklyGoals) {
+      if (weeklyGoalClaimed(goal.id, now)) continue;
+      if (weeklyGoalProgress(goal.id, now) < goal.target) continue;
+      final claimed = _prefs.getStringList('goalClaimed') ?? <String>[];
+      await _prefs.setStringList('goalClaimed', [...claimed, goal.id]);
+      await _add(goal.reward);
+      await _queueNotice('Weekly goal done: ${goal.title}. +${goal.reward} RP');
+    }
   }
 
   // ---- Days played, streak milestones, skins --------------------------------
@@ -333,6 +378,10 @@ class RankService {
     await _prefs.setInt('rp', rankPoints + points);
     await _addWeekly(points, now);
     await _noteHighestRank();
+    await _ensureGoalWeek(now);
+    await _prefs.setInt(
+        'goalGauntlets', (_prefs.getInt('goalGauntlets') ?? 0) + 1);
+    await _checkWeeklyGoals(now);
     return GauntletReward(
       firstToday: true,
       points: points,
@@ -419,6 +468,15 @@ class RankService {
       await _add(dare.reward);
       await _queueNotice('Zed\u2019s dare done! +${dare.reward} RP');
     }
+
+    await _ensureGoalWeek(today);
+    await _prefs.setInt('goalWins', (_prefs.getInt('goalWins') ?? 0) + 1);
+    final beaten = {
+      ...(_prefs.getStringList('goalGames') ?? const <String>[]),
+      game,
+    };
+    await _prefs.setStringList('goalGames', beaten.toList());
+    await _checkWeeklyGoals(today);
   }
 
   String? get _lastPlayed => _prefs.getString('lastPlayed');
