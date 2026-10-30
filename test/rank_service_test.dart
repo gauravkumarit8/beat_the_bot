@@ -466,6 +466,31 @@ void main() {
     expect(s.weeklyGoalProgress('wins10', DateTime(2026, 10, 26)), 0);
   });
 
+  test('reminders are off by default at 7 PM', () async {
+    final s = await makeService({});
+    expect(s.reminderOn, isFalse);
+    expect(s.reminderMinutes, 19 * 60);
+    expect(s.reminderPromptDismissed, isFalse);
+    await s.setReminderOn(true);
+    await s.setReminderMinutes(8 * 60 + 30);
+    await s.dismissReminderPrompt();
+    expect(s.reminderOn, isTrue);
+    expect(s.reminderMinutes, 510);
+    expect(s.reminderPromptDismissed, isTrue);
+  });
+
+  test('reset progress keeps the reminder settings', () async {
+    final s = await makeService({
+      'reminderOn': true,
+      'reminderMinutes': 600,
+      'reminderPromptDismissed': true,
+    });
+    await s.resetProgress();
+    expect(s.reminderOn, isTrue);
+    expect(s.reminderMinutes, 600);
+    expect(s.reminderPromptDismissed, isFalse);
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

@@ -94,12 +94,33 @@ class RankService {
   bool get vibrationOn => _prefs.getBool('vibration') ?? true;
   Future<void> setVibration(bool on) => _prefs.setBool('vibration', on);
 
+  bool get reminderOn => _prefs.getBool('reminderOn') ?? false;
+  Future<void> setReminderOn(bool on) => _prefs.setBool('reminderOn', on);
+
+  /// Time of day for the reminder, as minutes after midnight. Default 7 PM.
+  int get reminderMinutes => _prefs.getInt('reminderMinutes') ?? 19 * 60;
+  Future<void> setReminderMinutes(int minutes) =>
+      _prefs.setInt('reminderMinutes', minutes);
+
+  /// True once the player has answered the "remind me?" card on Home.
+  bool get reminderPromptDismissed =>
+      _prefs.getBool('reminderPromptDismissed') ?? false;
+  Future<void> dismissReminderPrompt() =>
+      _prefs.setBool('reminderPromptDismissed', true);
+
   bool get onboarded => _prefs.getBool('onboarded') ?? false;
   Future<void> setOnboarded() => _prefs.setBool('onboarded', true);
 
   /// Erases rank, streak, bests and learned difficulty. Settings stay.
   Future<void> resetProgress() async {
-    const keep = {'adsRemoved', 'vibration', 'difficulty', 'onboarded'};
+    const keep = {
+      'adsRemoved',
+      'vibration',
+      'difficulty',
+      'onboarded',
+      'reminderOn',
+      'reminderMinutes',
+    };
     for (final key in _prefs.getKeys().toList()) {
       if (!keep.contains(key)) await _prefs.remove(key);
     }

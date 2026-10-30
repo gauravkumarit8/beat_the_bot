@@ -40,8 +40,10 @@ jobs:
             cp -r /tmp/scaffold/android ./android
           fi
 
-      - name: Patch AndroidManifest for AdMob (safe to repeat)
-        run: python3 tools/patch_android.py
+      - name: Patch AndroidManifest and Gradle (safe to repeat)
+        run: |
+          python3 tools/patch_android.py
+          python3 tools/patch_desugaring.py
 
       - name: Commit Android changes back to the repo
         if: github.event_name != 'pull_request'

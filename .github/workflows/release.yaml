@@ -69,6 +69,7 @@ jobs:
           python3 tools/patch_signing.py
           python3 tools/patch_proguard.py
           python3 tools/patch_android.py
+          python3 tools/patch_desugaring.py
 
       # Gradle's plugin portal mirror sometimes lacks Kotlin artifacts that exist
       # on Maven Central. This makes Gradle look at Maven Central first for plugins.

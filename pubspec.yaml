@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   shared_preferences: ^2.2.3
   google_mobile_ads: ^9.1.0
+  flutter_local_notifications: ^22.0.0
+  timezone: any
 
 dev_dependencies:
   flutter_test:

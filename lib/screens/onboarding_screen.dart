@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../core/ads_service.dart';
 import '../core/rank_service.dart';
+import '../core/reminder_service.dart';
 import '../core/theme.dart';
 import 'home_screen.dart';
 
 /// Three short pages shown the first time the app opens.
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key, required this.rank, this.ads});
+  const OnboardingScreen({
+    super.key,
+    required this.rank,
+    this.ads,
+    this.reminders,
+  });
 
   final RankService rank;
   final AdsService? ads;
+  final ReminderService? reminders;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -52,7 +59,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) => HomeScreen(rank: widget.rank, ads: widget.ads),
+        builder: (_) => HomeScreen(
+          rank: widget.rank,
+          ads: widget.ads,
+          reminders: widget.reminders,
+        ),
       ),
     );
   }

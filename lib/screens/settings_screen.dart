@@ -3,13 +3,20 @@ import 'package:flutter/material.dart';
 import '../core/ads_service.dart';
 import '../core/haptics.dart';
 import '../core/rank_service.dart';
+import '../core/reminder_service.dart';
 import '../core/theme.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.rank, this.ads});
+  const SettingsScreen({
+    super.key,
+    required this.rank,
+    this.ads,
+    this.reminders,
+  });
 
   final RankService rank;
   final AdsService? ads;
+  final ReminderService? reminders;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -41,6 +48,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await widget.rank.setVibration(on);
     Haptics.enabled = on;
     Haptics.medium();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleReminder(bool on) async {
+    final reminders = widget.reminders;
+    if (reminders == null) return;
+    if (on) {
+      final allowed = await reminders.askPermission();
+      if (!mounted) return;
+      if (!allowed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Notifications are off for this app. Turn them on in your phone settings.'),
+          ),
+        );
+        return;
+      }
+    }
+    await widget.rank.setReminderOn(on);
+    await reminders.refresh(widget.rank);
+    if (mounted) setState(() {});
+  }
+
+  TimeOfDay get _reminderTime => TimeOfDay(
+        hour: widget.rank.reminderMinutes ~/ 60,
+        minute: widget.rank.reminderMinutes % 60,
+      );
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _reminderTime,
+    );
+    if (picked == null || !mounted) return;
+    await widget.rank.setReminderMinutes(picked.hour * 60 + picked.minute);
+    await widget.reminders?.refresh(widget.rank);
     if (mounted) setState(() {});
   }
 
@@ -144,6 +188,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(color: AppColors.muted, fontSize: 13)),
               ),
             ),
+            if (widget.reminders != null) ...[
+              const SizedBox(height: 14),
+              Material(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      value: widget.rank.reminderOn,
+                      onChanged: _toggleReminder,
+                      title: const Text('Daily reminder'),
+                      subtitle: const Text(
+                          'Zed nudges you, only on days you have not played yet',
+                          style:
+                              TextStyle(color: AppColors.muted, fontSize: 13)),
+                    ),
+                    if (widget.rank.reminderOn) ...[
+                      const Divider(height: 1, color: AppColors.line),
+                      ListTile(
+                        title: const Text('Reminder time'),
+                        subtitle: Text(ReminderService.timeLabel(_reminderTime),
+                            style: const TextStyle(
+                                color: AppColors.muted, fontSize: 13)),
+                        trailing: const Icon(Icons.chevron_right_rounded,
+                            color: AppColors.muted),
+                        onTap: _pickTime,
+                      ),
+                      const Divider(height: 1, color: AppColors.line),
+                      ListTile(
+                        title: const Text('Send a test reminder'),
+                        onTap: () => widget.reminders?.sendTest(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             Material(
               color: AppColors.card,

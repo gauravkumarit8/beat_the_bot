@@ -41,6 +41,29 @@ if "android.permission.INTERNET" not in s:
 # Friendly app name on the phone's home screen.
 s = s.replace('android:label="beat_the_bot"', 'android:label="Beat the Bot"')
 
+# Daily reminders (flutter_local_notifications).
+for perm in ("android.permission.POST_NOTIFICATIONS",
+             "android.permission.RECEIVE_BOOT_COMPLETED"):
+    if perm not in s:
+        s = s.replace(
+            "<application",
+            '<uses-permission android:name="' + perm + '"/>\n    <application',
+            1,
+        )
+
+if "ScheduledNotificationReceiver" not in s:
+    receivers = """    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+        </intent-filter>
+    </receiver>
+"""
+    s = s.replace("</application>", receivers + "    </application>", 1)
+
 if meta_key not in s:
     sys.exit("Could not patch AndroidManifest.xml")
 

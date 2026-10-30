@@ -9,6 +9,7 @@ import '../widgets/celebration.dart';
 import '../widgets/challenge_dialog.dart';
 import '../widgets/zed_face.dart';
 import '../core/rank_service.dart';
+import '../core/reminder_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
 import 'gauntlet_screen.dart';
@@ -19,24 +20,78 @@ import '../games/precision/precision_screen.dart';
 import '../games/reflex/reflex_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.rank, this.ads});
+  const HomeScreen({
+    super.key,
+    required this.rank,
+    this.ads,
+    this.reminders,
+  });
 
   final RankService rank;
   final AdsService? ads;
+  final ReminderService? reminders;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _missed = 0;
   int _lastRankIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _lastRankIndex = widget.rank.rank.index;
     _onOpen();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Coming back to the app counts as showing up, so tomorrow's reminder is
+    // rescheduled and today's is cancelled.
+    if (state == AppLifecycleState.resumed) {
+      widget.reminders?.refresh(widget.rank);
+    }
+  }
+
+  Future<void> _enableReminder() async {
+    final reminders = widget.reminders;
+    if (reminders == null) return;
+    final allowed = await reminders.askPermission();
+    if (!mounted) return;
+    if (!allowed) {
+      await widget.rank.dismissReminderPrompt();
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Notifications are off for this app. You can turn reminders on later in Settings.'),
+        ),
+      );
+      return;
+    }
+    await widget.rank.setReminderOn(true);
+    await reminders.refresh(widget.rank);
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Daily reminder is on. Change the time in Settings.')),
+    );
+  }
+
+  Future<void> _dismissReminderPrompt() async {
+    await widget.rank.dismissReminderPrompt();
+    if (mounted) setState(() {});
   }
 
   Future<void> _onOpen() async {
@@ -44,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() => _missed = result?.missedDays ?? 0);
     _lastRankIndex = widget.rank.rank.index;
+    widget.reminders?.refresh(widget.rank);
     if (result != null && (result.rankDropped || result.usedFreeze)) {
       await showDialog<void>(
         context: context,
@@ -149,8 +205,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-          builder: (_) =>
-              SettingsScreen(rank: widget.rank, ads: widget.ads)),
+          builder: (_) => SettingsScreen(
+              rank: widget.rank,
+              ads: widget.ads,
+              reminders: widget.reminders)),
     );
     await _afterRoute();
   }
@@ -222,6 +280,16 @@ class _HomeScreenState extends State<HomeScreen> {
             _ZedCard(rank: rank, missedDays: _missed),
             const SizedBox(height: 18),
             _TodayCard(twist: twist, rank: rank),
+            if (widget.reminders != null &&
+                !rank.reminderOn &&
+                !rank.reminderPromptDismissed &&
+                rank.totalWins + rank.totalLosses >= 1) ...[
+              const SizedBox(height: 12),
+              _ReminderCard(
+                onEnable: _enableReminder,
+                onDismiss: _dismissReminderPrompt,
+              ),
+            ],
             if (ads != null) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -777,6 +845,46 @@ class _DareCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ReminderCard extends StatelessWidget {
+  const _ReminderCard({required this.onEnable, required this.onDismiss});
+
+  final VoidCallback onEnable;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Want Zed to nudge you every day?',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text(
+            'One reminder at 7:00 PM, only on days you have not played yet. '
+            'You can change the time in Settings.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.35),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(onPressed: onDismiss, child: const Text('NOT NOW')),
+              TextButton(onPressed: onEnable, child: const Text('TURN ON')),
+            ],
+          ),
+        ],
       ),
     );
   }
