@@ -28,6 +28,8 @@ class ProgressScreen extends StatelessWidget {
       if (rank.memoryBest > 0) memorySkill(rank.memoryBest),
       if (rank.precisionBest > 0) precisionSkill(rank.precisionBest),
       if (rank.patternBest > 0) patternSkill(rank.patternBest),
+      if (rank.quizBest('math') > 0) quizSkill(rank.quizBest('math')),
+      if (rank.quizBest('color') > 0) quizSkill(rank.quizBest('color')),
     ];
     final age = brainAge(skills);
     final ladder = buildLadder(now: now, yourPoints: rank.weeklyPoints(now));
@@ -357,6 +359,16 @@ class ProgressScreen extends StatelessWidget {
             'Pattern',
             rank.patternBest > 0 ? patternSkill(rank.patternBest) : null,
             rank.patternBest > 0 ? '${rank.patternBest} pts' : '--'),
+        _skillRow(
+            'Math Rush',
+            rank.quizBest('math') > 0 ? quizSkill(rank.quizBest('math')) : null,
+            rank.quizBest('math') > 0 ? '${rank.quizBest('math')} pts' : '--'),
+        _skillRow(
+            'Color Clash',
+            rank.quizBest('color') > 0
+                ? quizSkill(rank.quizBest('color'))
+                : null,
+            rank.quizBest('color') > 0 ? '${rank.quizBest('color')} pts' : '--'),
       ],
     );
   }

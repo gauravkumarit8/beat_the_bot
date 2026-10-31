@@ -89,6 +89,11 @@ class RankService {
   Future<void> setPatternBest(int score) =>
       _prefs.setInt('patternBest', score);
 
+  /// Best total score in a quiz-style game: math or color.
+  int quizBest(String id) => _prefs.getInt('quizBest_$id') ?? 0;
+  Future<void> setQuizBest(String id, int score) =>
+      _prefs.setInt('quizBest_$id', score);
+
   // ---- Settings -----------------------------------------------------------
 
   bool get vibrationOn => _prefs.getBool('vibration') ?? true;

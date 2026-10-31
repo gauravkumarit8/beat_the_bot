@@ -14,6 +14,7 @@ import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
 import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/game_banner.dart';
 import '../../widgets/zed_face.dart';
 import 'pattern_generator.dart';
 
@@ -261,6 +262,7 @@ class _PatternScreenState extends State<PatternScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: GameBanner(ads: widget.ads),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),

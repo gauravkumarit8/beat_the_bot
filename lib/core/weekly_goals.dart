@@ -22,7 +22,7 @@ const List<WeeklyGoal> weeklyGoals = [
   ),
   WeeklyGoal(
     id: 'all_games',
-    title: 'Beat Zed in all four games',
+    title: 'Beat Zed in 4 different games',
     target: 4,
     reward: 30,
   ),

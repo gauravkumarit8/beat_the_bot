@@ -31,6 +31,18 @@ void main() {
     }
   });
 
+  test('the new quiz games have challenge codes too', () {
+    for (final game in ['math', 'color']) {
+      final c = Challenge(game: game, level: Level.medium, seed: 4242, score: 910);
+      final back = Challenge.parse(c.code)!;
+      expect(back.game, game);
+      expect(back.score, 910);
+    }
+    const math =
+        Challenge(game: 'math', level: Level.hard, seed: 1, score: 1200);
+    expect(math.shareText, contains('Math Rush'));
+  });
+
   test('lowercase codes and whole pasted messages are accepted', () {
     const c = Challenge(
         game: 'pattern', level: Level.easy, seed: 99, score: 640);

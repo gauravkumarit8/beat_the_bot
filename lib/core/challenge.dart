@@ -21,6 +21,8 @@ class Challenge {
     'memory': 'M',
     'precision': 'P',
     'pattern': 'T',
+    'math': 'A',
+    'color': 'C',
   };
 
   static const Map<Level, String> _levelChars = {
@@ -30,7 +32,7 @@ class Challenge {
   };
 
   static final RegExp _pattern =
-      RegExp(r'BTB-([MPT])([EMH])-([0-9A-Z]+)-(\d{1,4})-([0-9A-Z])');
+      RegExp(r'BTB-([MPTAC])([EMH])-([0-9A-Z]+)-(\d{1,4})-([0-9A-Z])');
 
   /// Example: BTB-MH-1K9X2-7-Q
   String get code {
@@ -70,6 +72,8 @@ class Challenge {
   String get gameTitle => switch (game) {
         'memory' => 'Memory',
         'precision' => 'Precision',
+        'math' => 'Math Rush',
+        'color' => 'Color Clash',
         _ => 'Pattern',
       };
 

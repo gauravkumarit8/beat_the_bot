@@ -12,13 +12,22 @@ class DailyDare {
   final int reward;
 }
 
-const List<String> _dareGames = ['reflex', 'memory', 'precision', 'pattern'];
+const List<String> _dareGames = [
+  'reflex',
+  'memory',
+  'precision',
+  'pattern',
+  'math',
+  'color',
+];
 
 const Map<String, String> _dareTitles = {
   'reflex': 'Beat me at Reflex',
   'memory': 'Out-remember me in Memory',
   'precision': 'Out-aim me in Precision',
   'pattern': 'Crack my patterns',
+  'math': 'Out-calculate me in Math Rush',
+  'color': 'Out-see me in Color Clash',
 };
 
 /// The same dare for everyone on the same date.

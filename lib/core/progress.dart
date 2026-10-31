@@ -9,6 +9,7 @@ double reflexSkill(int ms) => ms <= 0 ? 0 : _clamp01((450 - ms) / 250);
 double memorySkill(int tiles) => _clamp01((tiles - 3) / 7);
 double precisionSkill(int percent) => _clamp01((percent - 50) / 45);
 double patternSkill(int score) => _clamp01(score / 700);
+double quizSkill(int score) => _clamp01(score / 1300);
 
 /// A playful "brain age" from the games you have played. Not a medical
 /// measure. Returns null until at least one skill is known.

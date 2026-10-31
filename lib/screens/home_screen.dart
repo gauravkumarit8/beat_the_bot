@@ -17,6 +17,8 @@ import 'progress_screen.dart';
 import 'settings_screen.dart';
 import '../games/pattern/pattern_screen.dart';
 import '../games/precision/precision_screen.dart';
+import '../games/quiz/quiz_screen.dart';
+import '../games/quiz/quiz_specs.dart';
 import '../games/reflex/reflex_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -179,6 +181,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         subtitle: 'You are now ${current.name.toUpperCase()}. Zed noticed.',
       );
     }
+    // After two matches, a short ad when you come back to Home.
+    widget.ads?.showInterstitialIfDue();
+  }
+
+  Future<void> _playQuiz(QuizSpec spec) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+          builder: (_) =>
+              QuizScreen(spec: spec, rank: widget.rank, ads: widget.ads)),
+    );
+    await _afterRoute();
   }
 
   void _startGame(String game) {
@@ -189,6 +202,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _playMemory();
       case 'precision':
         _playPrecision();
+      case 'math':
+        _playQuiz(const MathRushSpec());
+      case 'color':
+        _playQuiz(const ColorClashSpec());
       default:
         _playPattern();
     }
@@ -232,6 +249,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         MemoryScreen(rank: widget.rank, ads: widget.ads, challenge: challenge),
       'precision' => PrecisionScreen(
           rank: widget.rank, ads: widget.ads, challenge: challenge),
+      'math' => QuizScreen(
+          spec: const MathRushSpec(),
+          rank: widget.rank,
+          ads: widget.ads,
+          challenge: challenge),
+      'color' => QuizScreen(
+          spec: const ColorClashSpec(),
+          rank: widget.rank,
+          ads: widget.ads,
+          challenge: challenge),
       _ =>
         PatternScreen(rank: widget.rank, ads: widget.ads, challenge: challenge),
     };
@@ -362,6 +389,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     subtitle: 'Zed: tricky',
                     icon: Icons.waves_rounded,
                     onTap: _playPattern,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _ModeCard(
+                    title: 'Math Rush',
+                    subtitle: 'Zed: quick',
+                    icon: Icons.calculate_rounded,
+                    onTap: () => _playQuiz(const MathRushSpec()),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ModeCard(
+                    title: 'Color Clash',
+                    subtitle: 'Zed: sneaky',
+                    icon: Icons.palette_rounded,
+                    onTap: () => _playQuiz(const ColorClashSpec()),
                   ),
                 ),
               ],

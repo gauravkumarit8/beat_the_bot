@@ -15,6 +15,7 @@ import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
 import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/game_banner.dart';
 import '../../widgets/zed_face.dart';
 
 enum _Phase { intro, showing, input, between, matchOver }
@@ -82,7 +83,10 @@ class _MemoryScreenState extends State<MemoryScreen> {
   late int _len;
   int _bestCleared = 0;
   late int _lives;
-  List<int> _sequence = [];
+  List<int> _expected = [];
+
+  /// On Hard, every third level must be repeated backwards.
+  bool get _reverseRound => _level == Level.hard && _len % 3 == 0;
   int _inputIndex = 0;
   int? _lit;
   int? _wrong;
@@ -147,7 +151,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
       seq.add(t);
     }
     setState(() {
-      _sequence = seq;
+      _expected = _reverseRound ? seq.reversed.toList() : seq;
       _inputIndex = 0;
       _wrong = null;
       _lit = null;
@@ -168,7 +172,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
   void _onTile(int i) {
     if (_phase != _Phase.input) return;
-    if (i == _sequence[_inputIndex]) {
+    if (i == _expected[_inputIndex]) {
       Haptics.selection();
       setState(() {
         _lit = i;
@@ -340,7 +344,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
       _len = _startLen;
       _bestCleared = 0;
       _lives = _maxLives;
-      _sequence = [];
+      _expected = [];
       _inputIndex = 0;
       _lit = null;
       _wrong = null;
@@ -352,6 +356,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: GameBanner(ads: widget.ads),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -486,9 +491,12 @@ class _MemoryScreenState extends State<MemoryScreen> {
           ],
         );
       case _Phase.showing:
-        return _hint('Watch the pattern...');
+        return _hint(_reverseRound
+            ? 'Watch... then repeat it BACKWARDS!'
+            : 'Watch the pattern...');
       case _Phase.input:
-        return _hint('Your turn · $_inputIndex of $_len');
+        return _hint(
+            '${_reverseRound ? 'Backwards! ' : ''}Your turn · $_inputIndex of $_len');
       case _Phase.between:
         return _hint(_wrong != null
             ? 'Wrong tile! $_lives ${_lives == 1 ? 'life' : 'lives'} left'

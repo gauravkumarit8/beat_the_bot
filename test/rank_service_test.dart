@@ -491,6 +491,26 @@ void main() {
     expect(s.reminderPromptDismissed, isFalse);
   });
 
+  test('quiz bests are saved per game', () async {
+    final s = await makeService({});
+    expect(s.quizBest('math'), 0);
+    await s.setQuizBest('math', 1100);
+    await s.setQuizBest('color', 900);
+    expect(s.quizBest('math'), 1100);
+    expect(s.quizBest('color'), 900);
+    final ids = [for (final a in await s.checkAchievements()) a.id];
+    expect(ids, contains('math_1000'));
+    expect(ids, isNot(contains('color_1000')));
+  });
+
+  test('the dare rotates through all six games', () {
+    final games = {
+      for (var i = 0; i < 6; i++) dareForDay(DateTime(2026, 10, 22 + i)).game
+    };
+    expect(games.length, 6);
+    expect(games, containsAll(['math', 'color']));
+  });
+
   test('daily twist is the same for the same date', () {
     final a = DailyTwist.forDate(DateTime(2026, 10, 21, 8));
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));

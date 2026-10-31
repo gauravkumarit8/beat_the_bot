@@ -113,6 +113,16 @@ void main() {
     expect(find.textContaining('Your friend held 7 tiles'), findsOneWidget);
   });
 
+  testWidgets('Math Rush opens from Home', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Math Rush'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('MATH RUSH'), findsOneWidget);
+    expect(find.text('START'), findsOneWidget);
+  });
+
   testWidgets('settings can switch vibration off', (tester) async {
     final rank = await pumpApp(tester);
     expect(rank.vibrationOn, isTrue);

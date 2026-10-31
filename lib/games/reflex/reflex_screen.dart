@@ -13,6 +13,7 @@ import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/game_banner.dart';
 import '../../widgets/zed_face.dart';
 import '../zed_ai.dart';
 
@@ -47,6 +48,8 @@ class _ReflexScreenState extends State<ReflexScreen> {
   final Random _rng = Random();
   final Stopwatch _clock = Stopwatch();
   Timer? _timer;
+  Timer? _decoyTimer;
+  bool _decoy = false;
 
   _Phase _phase = _Phase.ready;
   int _round = 1;
@@ -73,6 +76,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _decoyTimer?.cancel();
     super.dispose();
   }
 
@@ -87,6 +91,8 @@ class _ReflexScreenState extends State<ReflexScreen> {
       case _Phase.waiting:
         Haptics.heavy();
         _timer?.cancel();
+        _decoyTimer?.cancel();
+        _decoy = false;
         _endRound(null);
       case _Phase.go:
         _clock.stop();
@@ -100,13 +106,32 @@ class _ReflexScreenState extends State<ReflexScreen> {
 
   void _startRound() {
     setState(() => _phase = _Phase.waiting);
-    _timer = Timer(Duration(milliseconds: 1500 + _rng.nextInt(2500)), () {
+    final wait = 1500 + _rng.nextInt(2500);
+    _timer = Timer(Duration(milliseconds: wait), () {
       if (!mounted) return;
+      _decoyTimer?.cancel();
       _clock
         ..reset()
         ..start();
-      setState(() => _phase = _Phase.go);
+      setState(() {
+        _decoy = false;
+        _phase = _Phase.go;
+      });
     });
+    // From Medium up, the circle sometimes flashes amber before the real
+    // signal. It is only a trick: the real signal is always lime.
+    if (_level != Level.easy && wait > 2300 && _rng.nextBool()) {
+      _decoyTimer = Timer(
+        Duration(milliseconds: 800 + _rng.nextInt(wait - 1500)),
+        () {
+          if (!mounted || _phase != _Phase.waiting) return;
+          setState(() => _decoy = true);
+          _decoyTimer = Timer(const Duration(milliseconds: 260), () {
+            if (mounted) setState(() => _decoy = false);
+          });
+        },
+      );
+    }
   }
 
   void _endRound(int? youMs) {
@@ -205,6 +230,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: GameBanner(ads: widget.ads),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -285,7 +311,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
         textColor = AppColors.text;
       case _Phase.waiting:
         label = 'WAIT...';
-        color = AppColors.coral;
+        color = _decoy ? AppColors.amber : AppColors.coral;
       case _Phase.go:
         label = 'TAP!';
         color = AppColors.lime;
@@ -327,7 +353,9 @@ class _ReflexScreenState extends State<ReflexScreen> {
   Widget _bottomPanel() {
     switch (_phase) {
       case _Phase.ready:
-        return _hint('Tap the circle to start the round');
+        return _hint(_level == Level.easy
+            ? 'Tap the circle to start the round'
+            : 'Tap to start. Beware of fake flashes!');
       case _Phase.waiting:
         return _hint("Wait for lime. Don't tap early!");
       case _Phase.go:

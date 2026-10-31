@@ -27,8 +27,8 @@ class AdsService {
 
   final SharedPreferences _prefs;
 
-  static const int _matchesBetweenInterstitials = 3;
-  static const Duration _minGap = Duration(minutes: 3);
+  static const int _matchesBetweenInterstitials = 2;
+  static const Duration _minGap = Duration(seconds: 90);
 
   InterstitialAd? _interstitial;
   RewardedAd? _rewarded;
@@ -185,9 +185,12 @@ class AdsService {
 
 /// Banner for menu screens only. Shows nothing until an ad has loaded.
 class AdBanner extends StatefulWidget {
-  const AdBanner({super.key, required this.ads});
+  const AdBanner({super.key, required this.ads, this.topGap = 8});
 
   final AdsService ads;
+
+  /// Space above the banner, so it is not tapped by accident.
+  final double topGap;
 
   @override
   State<AdBanner> createState() => _AdBannerState();
@@ -245,7 +248,7 @@ class _AdBannerState extends State<AdBanner> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.only(top: 8),
+        padding: EdgeInsets.only(top: widget.topGap),
         child: SizedBox(
           width: ad.size.width.toDouble(),
           height: ad.size.height.toDouble(),

@@ -14,6 +14,7 @@ import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
 import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/game_banner.dart';
 import '../../widgets/zed_face.dart';
 
 enum _Phase { ready, playing, roundOver, matchOver }
@@ -279,6 +280,7 @@ class _PrecisionScreenState extends State<PrecisionScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: GameBanner(ads: widget.ads),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),

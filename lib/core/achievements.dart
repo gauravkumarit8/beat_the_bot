@@ -125,6 +125,18 @@ final List<Achievement> allAchievements = [
     isMet: (r) => r.precisionBest >= 95,
   ),
   Achievement(
+    id: 'math_1000',
+    title: 'Human calculator',
+    description: 'Score 1000 or more in Math Rush.',
+    isMet: (r) => r.quizBest('math') >= 1000,
+  ),
+  Achievement(
+    id: 'color_1000',
+    title: 'Eagle eye',
+    description: 'Score 1000 or more in Color Clash.',
+    isMet: (r) => r.quizBest('color') >= 1000,
+  ),
+  Achievement(
     id: 'pattern_600',
     title: 'Pattern master',
     description: 'Score 600 or more in Pattern.',
