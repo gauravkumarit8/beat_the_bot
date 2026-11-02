@@ -154,7 +154,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
   }
 
   List<Widget> _introView() {
-    final twist = DailyTwist.forDate(DateTime.now());
     return [
       Align(
         alignment: Alignment.centerLeft,
@@ -173,29 +172,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
         style: TextStyle(color: AppColors.muted, fontSize: 16, height: 1.4),
       ),
       const SizedBox(height: 18),
-      Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("TODAY'S TWIST",
-                style: TextStyle(
-                    color: AppColors.muted, letterSpacing: 1, fontSize: 12)),
-            const SizedBox(height: 6),
-            Text(twist.title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 2),
-            Text(twist.detail,
-                style: const TextStyle(color: AppColors.muted, fontSize: 14)),
-          ],
-        ),
-      ),
-      const SizedBox(height: 14),
       for (var i = 0; i < _names.length; i++)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),

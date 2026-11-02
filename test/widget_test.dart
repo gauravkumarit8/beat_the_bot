@@ -35,14 +35,17 @@ void main() {
     expect(find.text('Reflex'), findsOneWidget);
   });
 
-  testWidgets('tapping Hard saves the difficulty', (tester) async {
+  testWidgets('choosing Hard in the difficulty sheet saves it', (tester) async {
     final rank = await pumpApp(tester);
     expect(rank.difficulty, Difficulty.auto);
 
+    await tester.tap(find.text('Difficulty: Auto'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Hard'));
     await tester.pumpAndSettle();
 
     expect(rank.difficulty, Difficulty.hard);
+    expect(find.text('Difficulty: Hard'), findsOneWidget);
   });
 
   testWidgets('first launch shows onboarding, then Home', (tester) async {
@@ -88,7 +91,7 @@ void main() {
   testWidgets('challenge dialog rejects a bad code', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('ENTER CHALLENGE CODE'));
+    await tester.tap(find.text('Enter challenge code'));
     await tester.pumpAndSettle();
     expect(find.text('Challenge code'), findsOneWidget);
 
@@ -104,7 +107,7 @@ void main() {
     const c =
         Challenge(game: 'memory', level: Level.easy, seed: 5, score: 7);
 
-    await tester.tap(find.text('ENTER CHALLENGE CODE'));
+    await tester.tap(find.text('Enter challenge code'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), c.code);
     await tester.tap(find.text('PLAY'));

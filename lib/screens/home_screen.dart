@@ -4,6 +4,7 @@ import '../core/ads_service.dart';
 import '../core/challenge.dart';
 import '../core/dare.dart';
 import '../core/difficulty.dart';
+import '../core/weekly_goals.dart';
 import '../core/zed_voice.dart';
 import '../widgets/celebration.dart';
 import '../widgets/challenge_dialog.dart';
@@ -287,142 +288,169 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _showDifficultySheet() async {
+    final chosen = await showModalBottomSheet<Difficulty>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _DifficultySheet(current: widget.rank.difficulty),
+    );
+    if (chosen != null) await _setDifficulty(chosen);
+  }
+
+  List<_GameInfo> _games() {
+    final rank = widget.rank;
+    String best(bool played, String text) => played ? 'Best $text' : 'Not played yet';
+    final reflexMs = rank.reflexBestMs;
+    return [
+      _GameInfo(
+        title: 'Reflex',
+        icon: Icons.bolt_rounded,
+        accent: AppColors.amber,
+        line: best(reflexMs > 0, '${(reflexMs / 1000).toStringAsFixed(3)}s'),
+        onTap: _playReflex,
+      ),
+      _GameInfo(
+        title: 'Memory',
+        icon: Icons.grid_view_rounded,
+        accent: const Color(0xFF5BD6FF),
+        line: best(rank.memoryBest > 0, '${rank.memoryBest} tiles'),
+        onTap: _playMemory,
+      ),
+      _GameInfo(
+        title: 'Precision',
+        icon: Icons.adjust_rounded,
+        accent: AppColors.coralSoft,
+        line: best(rank.precisionBest > 0, '${rank.precisionBest}%'),
+        onTap: _playPrecision,
+      ),
+      _GameInfo(
+        title: 'Pattern',
+        icon: Icons.waves_rounded,
+        accent: const Color(0xFFB07CFF),
+        line: best(rank.patternBest > 0, '${rank.patternBest} pts'),
+        onTap: _playPattern,
+      ),
+      _GameInfo(
+        title: 'Math Rush',
+        icon: Icons.calculate_rounded,
+        accent: AppColors.lime,
+        line: best(rank.quizBest('math') > 0, '${rank.quizBest('math')} pts'),
+        onTap: () => _playQuiz(const MathRushSpec()),
+      ),
+      _GameInfo(
+        title: 'Color Clash',
+        icon: Icons.palette_rounded,
+        accent: const Color(0xFFFF4FD8),
+        line: best(rank.quizBest('color') > 0, '${rank.quizBest('color')} pts'),
+        onTap: () => _playQuiz(const ColorClashSpec()),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final ads = widget.ads;
     final rank = widget.rank;
-    final twist = DailyTwist.forDate(DateTime.now());
+    final now = DateTime.now();
+    final line = zedHomeLine(rank: rank, now: now, missedDays: _missed);
+    final dare = dareForDay(now);
+    final goalsDone =
+        weeklyGoals.where((g) => rank.weeklyGoalClaimed(g.id, now)).length;
+    final showReminder = widget.reminders != null &&
+        !rank.reminderOn &&
+        !rank.reminderPromptDismissed &&
+        rank.totalWins + rank.totalLosses >= 1;
+
     return Scaffold(
       bottomNavigationBar: ads == null ? null : AdBanner(ads: ads),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           children: [
-            _TopRow(
+            _TopBar(
               rank: rank,
-              onSettings: _openSettings,
               onProgress: _openProgress,
+              onSettings: _openSettings,
             ),
+            const SizedBox(height: 14),
+            _RankProgress(rank: rank),
             const SizedBox(height: 18),
-            _ZedCard(rank: rank, missedDays: _missed),
-            const SizedBox(height: 18),
-            _TodayCard(twist: twist, rank: rank),
-            if (widget.reminders != null &&
-                !rank.reminderOn &&
-                !rank.reminderPromptDismissed &&
-                rank.totalWins + rank.totalLosses >= 1) ...[
-              const SizedBox(height: 12),
-              _ReminderCard(
-                onEnable: _enableReminder,
-                onDismiss: _dismissReminderPrompt,
-              ),
-            ],
-            if (ads != null) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _watchForFreeze,
-                icon: const Icon(Icons.ac_unit_rounded),
-                label: Text('Watch ad: earn a streak freeze (${rank.freezes})'),
-              ),
-            ],
-            const SizedBox(height: 18),
-            _DareCard(
-              dare: dareForDay(DateTime.now()),
-              done: rank.dareDone(DateTime.now()),
-              onTap: () => _startGame(dareForDay(DateTime.now()).game),
+            _HeroCard(
+              rank: rank,
+              line: line,
+              gauntletScore: rank.gauntletTodayScore(now),
+              onGauntlet: _playGauntlet,
             ),
-            const SizedBox(height: 12),
-            _GauntletCard(
-              todayScore: rank.gauntletTodayScore(DateTime.now()),
-              onTap: _playGauntlet,
-            ),
-            const SizedBox(height: 18),
-            const Text('DIFFICULTY',
-                style: TextStyle(
-                    color: AppColors.muted, letterSpacing: 1, fontSize: 13)),
+            const SizedBox(height: 24),
+            const _SectionLabel('TODAY'),
             const SizedBox(height: 10),
-            _DifficultyBar(
-              current: rank.difficulty,
-              onChanged: _setDifficulty,
-            ),
-            const SizedBox(height: 18),
-            const Text('PICK YOUR BATTLE',
-                style: TextStyle(
-                    color: AppColors.muted, letterSpacing: 1, fontSize: 13)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _ModeCard(
-                    title: 'Reflex',
-                    subtitle: 'Zed: strong',
-                    icon: Icons.bolt_rounded,
-                    onTap: _playReflex,
+            SizedBox(
+              height: 118,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _DareTile(
+                    dare: dare,
+                    done: rank.dareDone(now),
+                    onTap: () => _startGame(dare.game),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ModeCard(
-                    title: 'Memory',
-                    subtitle: 'Zed: weak spot',
-                    icon: Icons.grid_view_rounded,
-                    onTap: _playMemory,
+                  const SizedBox(width: 12),
+                  _GoalsTile(
+                    done: goalsDone,
+                    total: weeklyGoals.length,
+                    onTap: _openProgress,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _ModeCard(
-                    title: 'Precision',
-                    subtitle: 'Zed: average',
-                    icon: Icons.adjust_rounded,
-                    onTap: _playPrecision,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ModeCard(
-                    title: 'Pattern',
-                    subtitle: 'Zed: tricky',
-                    icon: Icons.waves_rounded,
-                    onTap: _playPattern,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _ModeCard(
-                    title: 'Math Rush',
-                    subtitle: 'Zed: quick',
-                    icon: Icons.calculate_rounded,
-                    onTap: () => _playQuiz(const MathRushSpec()),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ModeCard(
-                    title: 'Color Clash',
-                    subtitle: 'Zed: sneaky',
-                    icon: Icons.palette_rounded,
-                    onTap: () => _playQuiz(const ColorClashSpec()),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            OutlinedButton.icon(
-              onPressed: _enterChallenge,
-              icon: const Icon(Icons.group_add_rounded),
-              label: const FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text('ENTER CHALLENGE CODE'),
+                  if (showReminder) ...[
+                    const SizedBox(width: 12),
+                    _ReminderTile(
+                      onEnable: _enableReminder,
+                      onDismiss: _dismissReminderPrompt,
+                    ),
+                  ],
+                ],
               ),
+            ),
+            const SizedBox(height: 26),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const _SectionLabel('PLAY'),
+                _DifficultyChip(
+                  label: rank.difficulty.label,
+                  onTap: _showDifficultySheet,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            GridView.count(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.15,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [for (final g in _games()) _GameCard(info: g)],
+            ),
+            const SizedBox(height: 18),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: _enterChallenge,
+                  icon: const Icon(Icons.group_add_rounded, size: 20),
+                  label: const Text('Enter challenge code'),
+                ),
+                if (ads != null)
+                  TextButton.icon(
+                    onPressed: _watchForFreeze,
+                    icon: const Icon(Icons.ac_unit_rounded, size: 20),
+                    label: Text('Streak freezes: ${rank.freezes} · get more'),
+                  ),
+              ],
             ),
           ],
         ),
@@ -431,47 +459,106 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-class _TopRow extends StatelessWidget {
-  const _TopRow({
-    required this.rank,
-    required this.onSettings,
-    required this.onProgress,
+// ---------------------------------------------------------------------------
+// Pieces of the Home screen
+// ---------------------------------------------------------------------------
+
+class _GameInfo {
+  const _GameInfo({
+    required this.title,
+    required this.icon,
+    required this.accent,
+    required this.line,
+    required this.onTap,
   });
 
-  final RankService rank;
-  final VoidCallback onSettings;
-  final VoidCallback onProgress;
+  final String title;
+  final IconData icon;
+  final Color accent;
+  final String line;
+  final VoidCallback onTap;
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    // Wrap (not Row) so long ranks or streaks drop to a second line
-    // instead of overflowing on narrow phones.
+    return Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.muted,
+        fontSize: 12,
+        letterSpacing: 1.4,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.rank,
+    required this.onProgress,
+    required this.onSettings,
+  });
+
+  final RankService rank;
+  final VoidCallback onProgress;
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    // Wrap, not Row, so a long rank on a narrow phone drops the icons to a
+    // second line instead of overflowing.
     return Wrap(
       alignment: WrapAlignment.spaceBetween,
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 12,
-      runSpacing: 10,
+      runSpacing: 4,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            '${rank.rank.name.toUpperCase()} · ${rank.rankPoints} RP',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          ),
-        ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.local_fire_department_rounded,
-                color: AppColors.amber, size: 22),
-            const SizedBox(width: 6),
-            Text('${rank.streak} day streak',
-                style: const TextStyle(
-                    color: AppColors.amber, fontWeight: FontWeight.w700)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${rank.rank.name.toUpperCase()} · ${rank.rankPoints} RP',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Semantics(
+              label: '${rank.streak} day streak',
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.local_fire_department_rounded,
+                        color: AppColors.amber, size: 18),
+                    const SizedBox(width: 4),
+                    Text('${rank.streak}',
+                        style: const TextStyle(
+                            color: AppColors.amber,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13)),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
         Row(
@@ -494,75 +581,9 @@ class _TopRow extends StatelessWidget {
   }
 }
 
-class _ZedCard extends StatelessWidget {
-  const _ZedCard({required this.rank, required this.missedDays});
+class _RankProgress extends StatelessWidget {
+  const _RankProgress({required this.rank});
 
-  final RankService rank;
-  final int missedDays;
-
-  @override
-  Widget build(BuildContext context) {
-    final line = zedHomeLine(
-      rank: rank,
-      now: DateTime.now(),
-      missedDays: missedDays,
-    );
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          ZedFace(mood: line.mood, size: 72, backdrop: true),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('ZED-9',
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text('"${line.text}"',
-                    style:
-                        const TextStyle(color: AppColors.muted, fontSize: 14)),
-                const SizedBox(height: 8),
-                Text(
-                  'You ${rank.totalWins}  ·  Zed ${rank.totalLosses}',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-                if (rank.winStreak + 1 >= RankService.hotStreakFrom)
-                  const Text(
-                    'Hot streak! Every win pays +${RankService.hotStreakBonus} RP',
-                    style: const TextStyle(
-                        color: AppColors.amber,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700),
-                  ),
-                if (rank.revengeReady)
-                  const Text(
-                    'Revenge bonus ready: +${RankService.revengeBonus} RP',
-                    style: const TextStyle(
-                        color: AppColors.amber,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.twist, required this.rank});
-
-  final DailyTwist twist;
   final RankService rank;
 
   @override
@@ -571,105 +592,512 @@ class _TodayCard extends StatelessWidget {
     final hasNext = current.index + 1 < Rank.values.length;
     final next = hasNext ? Rank.values[current.index + 1] : null;
     var progress = 1.0;
-    var label = 'Top rank reached';
+    var caption = 'Top rank reached';
     if (next != null) {
       final from = rankThreshold[current]!;
       final to = rankThreshold[next]!;
       progress = ((rank.rankPoints - from) / (to - from)).clamp(0.0, 1.0);
-      label = '${to - rank.rankPoints} RP to ${next.name.toUpperCase()}';
+      caption = '${to - rank.rankPoints} RP to ${next.name.toUpperCase()}';
     }
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            backgroundColor: AppColors.line,
+            color: AppColors.lime,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(current.name.toUpperCase(),
+                style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+            Text(caption,
+                style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.amber, width: 1.2),
+      ),
+      child: Text(text,
+          style: const TextStyle(
+              color: AppColors.amber, fontSize: 11, fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+/// Zed, what he says, your record against him, and the one big action.
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.rank,
+    required this.line,
+    required this.gauntletScore,
+    required this.onGauntlet,
+  });
+
+  final RankService rank;
+  final ZedLine line;
+  final int? gauntletScore;
+  final VoidCallback onGauntlet;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = gauntletScore == null
+        ? '4 games · same puzzles for everyone today'
+        : 'Today: $gauntletScore points · tap to play again';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF212B5E), Color(0xFF151B38)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.line),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("TODAY'S TWIST",
-              style: TextStyle(
-                  color: AppColors.muted, letterSpacing: 1, fontSize: 12)),
-          const SizedBox(height: 6),
-          Text(twist.title,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text(twist.detail,
-              style: const TextStyle(color: AppColors.muted, fontSize: 14)),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
-              backgroundColor: AppColors.line,
-              color: AppColors.lime,
+          Row(
+            children: [
+              ZedFace(mood: line.mood, size: 84, backdrop: true),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('ZED-9',
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text('"${line.text}"',
+                        style: const TextStyle(
+                            color: AppColors.muted, fontSize: 14, height: 1.3)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'You ${rank.totalWins}  ·  Zed ${rank.totalLosses}',
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (rank.revengeReady ||
+              rank.winStreak + 1 >= RankService.hotStreakFrom) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (rank.revengeReady)
+                    const _StatusChip(
+                        'REVENGE BONUS +${RankService.revengeBonus} RP'),
+                  if (rank.winStreak + 1 >= RankService.hotStreakFrom)
+                    const _StatusChip(
+                        'HOT STREAK +${RankService.hotStreakBonus} RP PER WIN'),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Material(
+            color: AppColors.lime,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: onGauntlet,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    const Icon(Icons.flag_rounded, color: AppColors.bg, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'DAILY GAUNTLET',
+                              style: TextStyle(
+                                color: AppColors.bg,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: AppColors.bg, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_rounded,
+                        color: AppColors.bg, size: 24),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(label,
-              style: const TextStyle(color: AppColors.muted, fontSize: 12)),
         ],
       ),
     );
   }
 }
 
-class _ModeCard extends StatelessWidget {
-  const _ModeCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    this.onTap,
+/// A small card in the "Today" strip.
+class _TileShell extends StatelessWidget {
+  const _TileShell({
+    required this.onTap,
+    required this.child,
+    this.borderColor = AppColors.line,
   });
 
-  final String title;
-  final String subtitle;
-  final IconData icon;
   final VoidCallback? onTap;
+  final Widget child;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: onTap == null ? 0.55 : 1,
+    return SizedBox(
+      width: 224,
       child: Material(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          child: SizedBox(
-            height: 108,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor, width: 1.2),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DareTile extends StatelessWidget {
+  const _DareTile({
+    required this.dare,
+    required this.done,
+    required this.onTap,
+  });
+
+  final DailyDare dare;
+  final bool done;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TileShell(
+      onTap: done ? null : onTap,
+      borderColor: done ? AppColors.line : AppColors.coral,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                done ? Icons.check_circle_rounded : Icons.whatshot_rounded,
+                color: done ? AppColors.lime : AppColors.coral,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              const Text("ZED'S DARE",
+                  style: TextStyle(
+                      color: AppColors.muted,
+                      letterSpacing: 1,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+          Text(dare.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          Text(
+            done ? 'DONE' : '+${dare.reward} RP',
+            style: TextStyle(
+              color: done ? AppColors.lime : AppColors.amber,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalsTile extends StatelessWidget {
+  const _GoalsTile({
+    required this.done,
+    required this.total,
+    required this.onTap,
+  });
+
+  final int done;
+  final int total;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TileShell(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.flag_circle_rounded, color: AppColors.amber, size: 18),
+              SizedBox(width: 6),
+              Text('WEEKLY GOALS',
+                  style: TextStyle(
+                      color: AppColors.muted,
+                      letterSpacing: 1,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+          Text('$done of $total done',
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: total == 0 ? 0 : done / total,
+              minHeight: 6,
+              backgroundColor: AppColors.line,
+              color: AppColors.amber,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReminderTile extends StatelessWidget {
+  const _ReminderTile({required this.onEnable, required this.onDismiss});
+
+  final VoidCallback onEnable;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TileShell(
+      onTap: null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.notifications_active_rounded,
+                  color: AppColors.lime, size: 18),
+              SizedBox(width: 6),
+              Text('DAILY REMINDER',
+                  style: TextStyle(
+                      color: AppColors.muted,
+                      letterSpacing: 1,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const Text('Let Zed nudge you at 7 PM?',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: onDismiss,
+                style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8)),
+                child: const Text('NOT NOW'),
+              ),
+              TextButton(
+                onPressed: onEnable,
+                style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8)),
+                child: const Text('TURN ON'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DifficultyChip extends StatelessWidget {
+  const _DifficultyChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Difficulty: $label',
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700)),
+              const Icon(Icons.expand_more_rounded,
+                  size: 18, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DifficultySheet extends StatelessWidget {
+  const _DifficultySheet({required this.current});
+
+  final Difficulty current;
+
+  static String _describe(Difficulty d) => switch (d) {
+        Difficulty.easy => 'Zed is slower and more forgiving. Good for learning.',
+        Difficulty.medium => 'A fair fight.',
+        Difficulty.hard => 'Zed is sharp, and the games have extra twists.',
+        Difficulty.auto => 'Adapts to your wins and losses in each game.',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Text('Difficulty',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            ),
+            for (final d in Difficulty.values)
+              ListTile(
+                leading: Icon(
+                  d == current
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                  color: d == current ? AppColors.lime : AppColors.muted,
+                ),
+                title: Text(d.label,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(_describe(d),
+                    style:
+                        const TextStyle(color: AppColors.muted, fontSize: 13)),
+                onTap: () => Navigator.of(context).pop(d),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GameCard extends StatelessWidget {
+  const _GameCard({required this.info});
+
+  final _GameInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: info.onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.line,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(info.icon, color: info.accent, size: 26),
+              ),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(icon, color: AppColors.lime, size: 28),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(title,
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w700)),
-                      ),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(subtitle,
-                            style: const TextStyle(
-                                color: AppColors.muted, fontSize: 12)),
-                      ),
-                    ],
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(info.title,
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w700)),
                   ),
+                  const SizedBox(height: 2),
+                  Text(info.line,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: AppColors.muted, fontSize: 12)),
                 ],
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -700,241 +1128,9 @@ class _ReturnDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('LET\'S GO'),
+          child: const Text("LET'S GO"),
         ),
       ],
-    );
-  }
-}
-
-class _DifficultyBar extends StatelessWidget {
-  const _DifficultyBar({required this.current, required this.onChanged});
-
-  final Difficulty current;
-  final ValueChanged<Difficulty> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final hint = current == Difficulty.auto
-        ? 'Auto adjusts to your wins and losses in each game.'
-        : 'Zed plays at ${current.label} level in every game.';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            for (final d in Difficulty.values)
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                      right: d == Difficulty.values.last ? 0 : 8),
-                  child: _chip(d),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(hint,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-      ],
-    );
-  }
-
-  Widget _chip(Difficulty d) {
-    final selected = d == current;
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: selected ? AppColors.lime : AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => onChanged(d),
-          child: SizedBox(
-            height: 44,
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    d.label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: selected ? AppColors.bg : AppColors.text,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GauntletCard extends StatelessWidget {
-  const _GauntletCard({required this.todayScore, required this.onTap});
-
-  final int? todayScore;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = todayScore;
-    return Material(
-      color: AppColors.lime,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              const Icon(Icons.flag_rounded, color: AppColors.bg, size: 30),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'DAILY GAUNTLET',
-                        style: TextStyle(
-                          color: AppColors.bg,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      done == null
-                          ? '4 games. Same puzzles for everyone today.'
-                          : 'Today: $done points. Play again for practice.',
-                      style: const TextStyle(
-                          color: AppColors.bg, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.bg, size: 28),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DareCard extends StatelessWidget {
-  const _DareCard({
-    required this.dare,
-    required this.done,
-    required this.onTap,
-  });
-
-  final DailyDare dare;
-  final bool done;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.card,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: done ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: done ? AppColors.line : AppColors.coral, width: 1.5),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                done ? Icons.check_circle_rounded : Icons.whatshot_rounded,
-                color: done ? AppColors.lime : AppColors.coral,
-                size: 28,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("ZED'S DARE",
-                        style: TextStyle(
-                            color: AppColors.muted,
-                            letterSpacing: 1,
-                            fontSize: 12)),
-                    const SizedBox(height: 2),
-                    Text(dare.title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                done ? 'DONE' : '+${dare.reward} RP',
-                style: TextStyle(
-                  color: done ? AppColors.lime : AppColors.amber,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReminderCard extends StatelessWidget {
-  const _ReminderCard({required this.onEnable, required this.onDismiss});
-
-  final VoidCallback onEnable;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Want Zed to nudge you every day?',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          const SizedBox(height: 4),
-          const Text(
-            'One reminder at 7:00 PM, only on days you have not played yet. '
-            'You can change the time in Settings.',
-            style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.35),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(onPressed: onDismiss, child: const Text('NOT NOW')),
-              TextButton(onPressed: onEnable, child: const Text('TURN ON')),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
