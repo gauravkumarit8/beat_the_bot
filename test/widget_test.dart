@@ -96,7 +96,7 @@ void main() {
     expect(find.text('Challenge code'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'nonsense');
-    await tester.tap(find.text('PLAY'));
+    await tester.tap(find.widgetWithText(TextButton, 'PLAY'));
     await tester.pumpAndSettle();
 
     expect(find.text('That code does not look right.'), findsOneWidget);
@@ -110,7 +110,7 @@ void main() {
     await tester.tap(find.text('Enter challenge code'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), c.code);
-    await tester.tap(find.text('PLAY'));
+    await tester.tap(find.widgetWithText(TextButton, 'PLAY'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Your friend held 7 tiles'), findsOneWidget);
