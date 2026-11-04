@@ -1,5 +1,6 @@
 import 'package:beat_the_bot/core/challenge.dart';
 import 'package:beat_the_bot/core/difficulty.dart';
+import 'package:beat_the_bot/core/fx.dart';
 import 'package:beat_the_bot/core/rank_service.dart';
 import 'package:beat_the_bot/main.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ void main() {
     WidgetTester tester, {
     Map<String, Object> prefsValues = const {'onboarded': true},
   }) async {
+    Fx.animations = false; // looping animations would never let a test settle
     SharedPreferences.setMockInitialValues(prefsValues);
     final prefs = await SharedPreferences.getInstance();
 
