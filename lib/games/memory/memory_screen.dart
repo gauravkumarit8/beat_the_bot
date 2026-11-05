@@ -15,6 +15,7 @@ import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
 import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/fx_widgets.dart';
 import '../../widgets/game_banner.dart';
 import '../../widgets/zed_face.dart';
 
@@ -355,7 +356,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return NeonScaffold(
       bottomNavigationBar: GameBanner(ads: widget.ads),
       body: SafeArea(
         child: Padding(
@@ -418,12 +419,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
   }
 
   Widget _tauntBubble() {
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-      ),
       child: Row(
         children: [
           ZedFace(mood: _mood, size: 36),
@@ -469,6 +466,9 @@ class _MemoryScreenState extends State<MemoryScreen> {
             color: color,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.line, width: 2),
+            boxShadow: _lit == i
+                ? const [BoxShadow(color: Color(0x80B8F34A), blurRadius: 26)]
+                : null,
           ),
         ),
       ),

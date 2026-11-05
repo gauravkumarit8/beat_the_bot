@@ -9,6 +9,7 @@ import '../games/memory/memory_screen.dart';
 import '../games/pattern/pattern_screen.dart';
 import '../games/precision/precision_screen.dart';
 import '../games/reflex/reflex_screen.dart';
+import '../widgets/fx_widgets.dart';
 
 /// Plays all four games in a row and adds up one score out of 1000.
 class GauntletScreen extends StatefulWidget {
@@ -142,7 +143,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   @override
   Widget build(BuildContext context) {
     final ads = widget.ads;
-    return Scaffold(
+    return NeonScaffold(
       bottomNavigationBar: ads == null ? null : AdBanner(ads: ads),
       body: SafeArea(
         child: ListView(

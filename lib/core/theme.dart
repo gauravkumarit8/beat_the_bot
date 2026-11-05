@@ -43,6 +43,8 @@ ThemeData buildTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.lime,
         foregroundColor: AppColors.bg,
+        elevation: 8,
+        shadowColor: const Color(0xAAB8F34A),
         minimumSize: const Size.fromHeight(60),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),

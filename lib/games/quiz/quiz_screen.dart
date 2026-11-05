@@ -13,6 +13,7 @@ import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
 import '../../widgets/challenge_panel.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/fx_widgets.dart';
 import '../../widgets/game_banner.dart';
 import '../../widgets/zed_face.dart';
 import 'quiz_specs.dart';
@@ -233,7 +234,7 @@ class _QuizScreenState extends State<QuizScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return NeonScaffold(
       bottomNavigationBar: GameBanner(ads: widget.ads),
       body: SafeArea(
         child: Padding(
@@ -286,12 +287,8 @@ class _QuizScreenState extends State<QuizScreen>
   }
 
   Widget _tauntBubble() {
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-      ),
       child: Row(
         children: [
           ZedFace(mood: _mood, size: 36),

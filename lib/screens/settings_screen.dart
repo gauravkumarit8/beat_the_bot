@@ -5,6 +5,7 @@ import '../core/haptics.dart';
 import '../core/rank_service.dart';
 import '../core/reminder_service.dart';
 import '../core/theme.dart';
+import '../widgets/fx_widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -159,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final ads = widget.ads;
-    return Scaffold(
+    return NeonScaffold(
       bottomNavigationBar: ads == null ? null : AdBanner(ads: ads),
       body: SafeArea(
         child: ListView(
@@ -176,10 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Text('Settings',
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
             const SizedBox(height: 18),
-            Material(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
+            GlassPanel(
               child: SwitchListTile(
                 value: widget.rank.vibrationOn,
                 onChanged: _setVibration,
@@ -190,11 +188,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (widget.reminders != null) ...[
               const SizedBox(height: 14),
-              Material(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(20),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
+              GlassPanel(
+              child: Column(
                   children: [
                     SwitchListTile(
                       value: widget.rank.reminderOn,
@@ -227,10 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 14),
-            Material(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
+            GlassPanel(
               child: Column(
                 children: [
                   if (_adChoices) ...[

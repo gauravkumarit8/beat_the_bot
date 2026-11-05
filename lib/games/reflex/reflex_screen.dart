@@ -13,6 +13,7 @@ import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
 import '../../widgets/difficulty_badge.dart';
+import '../../widgets/fx_widgets.dart';
 import '../../widgets/game_banner.dart';
 import '../../widgets/zed_face.dart';
 import '../zed_ai.dart';
@@ -229,7 +230,7 @@ class _ReflexScreenState extends State<ReflexScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return NeonScaffold(
       bottomNavigationBar: GameBanner(ads: widget.ads),
       body: SafeArea(
         child: Padding(
@@ -281,12 +282,8 @@ class _ReflexScreenState extends State<ReflexScreen> {
   }
 
   Widget _tauntBubble() {
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-      ),
       child: Row(
         children: [
           ZedFace(mood: _mood, size: 36),
@@ -337,6 +334,10 @@ class _ReflexScreenState extends State<ReflexScreen> {
             shape: BoxShape.circle,
             color: color,
             border: Border.all(color: AppColors.line, width: 2),
+            boxShadow: [
+              BoxShadow(
+                  color: color.withAlpha(110), blurRadius: 40, spreadRadius: 2),
+            ],
           ),
           alignment: Alignment.center,
           child: Text(

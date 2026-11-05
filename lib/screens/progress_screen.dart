@@ -9,6 +9,7 @@ import '../core/zed_skins.dart';
 import '../core/zed_voice.dart';
 import '../widgets/zed_face.dart';
 import '../core/theme.dart';
+import '../widgets/fx_widgets.dart';
 
 /// Shows how the player is improving, plus a weekly ladder against bots.
 class ProgressScreen extends StatelessWidget {
@@ -69,7 +70,7 @@ class ProgressScreen extends StatelessWidget {
 
     return DefaultTabController(
       length: 3,
-      child: Scaffold(
+      child: NeonScaffold(
         bottomNavigationBar:
             adsService == null ? null : AdBanner(ads: adsService),
         body: SafeArea(
@@ -205,16 +206,7 @@ class ProgressScreen extends StatelessWidget {
     );
   }
 
-  Widget _card({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: child,
-    );
-  }
+  Widget _card({required Widget child}) => GlassCard(child: child);
 
   Widget _calendar(DateTime now) {
     final played = rank.playDays();

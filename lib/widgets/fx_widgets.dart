@@ -219,3 +219,84 @@ class Reveal extends StatelessWidget {
     );
   }
 }
+
+/// A calm, still version of the Home backdrop, for every other screen.
+/// It is painted once, so it costs nothing while a game is being played.
+class NeonScaffold extends StatelessWidget {
+  const NeonScaffold({super.key, required this.body, this.bottomNavigationBar});
+
+  final Widget body;
+  final Widget? bottomNavigationBar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      bottomNavigationBar: bottomNavigationBar,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: FutureBackdrop(t: AlwaysStoppedAnimation<double>(0)),
+          ),
+          Positioned.fill(child: body),
+        ],
+      ),
+    );
+  }
+}
+
+const BoxDecoration _glassDecoration = BoxDecoration(
+  gradient: LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1C2554), Color(0xFF121838)],
+  ),
+);
+
+/// A glass-style card: dark gradient fill and a faint cyan edge.
+class GlassCard extends StatelessWidget {
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(18),
+    this.radius = 20,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        gradient: _glassDecoration.gradient,
+        border: Border.all(color: Fx.cyan.withAlpha(70)),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Like [GlassCard], for lists of tappable rows. The Material sits inside the
+/// decoration, so taps still show their ripple.
+class GlassPanel extends StatelessWidget {
+  const GlassPanel({super.key, required this.child, this.radius = 20});
+
+  final Widget child;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        gradient: _glassDecoration.gradient,
+        border: Border.all(color: Fx.cyan.withAlpha(70)),
+      ),
+      child: Material(color: Colors.transparent, child: child),
+    );
+  }
+}

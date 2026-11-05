@@ -5,6 +5,7 @@ import '../core/rank_service.dart';
 import '../core/reminder_service.dart';
 import '../core/theme.dart';
 import 'home_screen.dart';
+import '../widgets/fx_widgets.dart';
 
 /// Three short pages shown the first time the app opens.
 class OnboardingScreen extends StatefulWidget {
@@ -82,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final last = _index == _pages.length - 1;
-    return Scaffold(
+    return NeonScaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
