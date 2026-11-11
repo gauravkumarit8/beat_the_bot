@@ -9,7 +9,7 @@ import 'core/rank_service.dart';
 import 'core/reminder_service.dart';
 import 'core/zed_skins.dart';
 import 'core/theme.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 
 Future<void> main() async {
@@ -44,7 +44,7 @@ class BeatTheBotApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       home: rank.onboarded
-          ? HomeScreen(rank: rank, ads: ads, reminders: reminders)
+          ? MainShell(rank: rank, ads: ads, reminders: reminders)
           : OnboardingScreen(rank: rank, ads: ads, reminders: reminders),
     );
   }

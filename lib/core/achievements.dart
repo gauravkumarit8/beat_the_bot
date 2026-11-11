@@ -85,7 +85,7 @@ final List<Achievement> allAchievements = [
   Achievement(
     id: 'perfect',
     title: 'Clean sweep',
-    description: 'Beat Zed in all four Gauntlet games.',
+    description: 'Beat Zed in every Gauntlet game.',
     isMet: (r) => r.perfectGauntlets >= 1,
   ),
   Achievement(

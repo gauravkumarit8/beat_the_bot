@@ -381,10 +381,10 @@ class RankService {
   static const int gauntletBonus = 20;
 
   Future<GauntletReward> onGauntletDone(
-      DateTime now, int wins, int score) async {
+      DateTime now, int wins, int score, {int games = 4}) async {
     final key = _key(now);
     await _saveGauntletScore(key, score);
-    if (wins >= 4) {
+    if (wins >= games) {
       await _prefs.setInt('perfectGauntlets', perfectGauntlets + 1);
     }
     final first = _prefs.getString('gauntletDay') != key;

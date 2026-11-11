@@ -13,7 +13,11 @@ class SettingsScreen extends StatefulWidget {
     required this.rank,
     this.ads,
     this.reminders,
+    this.embedded = false,
   });
+
+  /// True when shown as a bottom-navigation tab (no Back button).
+  final bool embedded;
 
   final RankService rank;
   final AdsService? ads;
@@ -166,14 +170,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                tooltip: 'Back',
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-            ),
+            if (!widget.embedded)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+              )
+            else
+              const SizedBox(height: 12),
             const Text('Settings',
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
             const SizedBox(height: 18),

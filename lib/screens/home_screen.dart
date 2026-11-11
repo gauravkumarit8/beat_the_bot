@@ -30,11 +30,22 @@ class HomeScreen extends StatefulWidget {
     required this.rank,
     this.ads,
     this.reminders,
+    this.onOpenProgress,
+    this.onOpenSettings,
+    this.refresh,
   });
 
   final RankService rank;
   final AdsService? ads;
   final ReminderService? reminders;
+
+  /// When Home sits inside the bottom-navigation shell, these switch tabs
+  /// instead of pushing a new screen.
+  final VoidCallback? onOpenProgress;
+  final VoidCallback? onOpenSettings;
+
+  /// The shell pings this when the Play tab is shown again.
+  final Listenable? refresh;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -56,7 +67,12 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _lastRankIndex = widget.rank.rank.index;
+    widget.refresh?.addListener(_onRefresh);
     _onOpen();
+  }
+
+  void _onRefresh() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -73,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.refresh?.removeListener(_onRefresh);
     _fx.dispose();
     super.dispose();
   }
@@ -234,6 +251,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openProgress() async {
+    final go = widget.onOpenProgress;
+    if (go != null) {
+      go();
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
           builder: (_) => ProgressScreen(rank: widget.rank, ads: widget.ads)),
@@ -242,6 +264,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openSettings() async {
+    final go = widget.onOpenSettings;
+    if (go != null) {
+      go();
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
           builder: (_) => SettingsScreen(
@@ -750,7 +777,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = gauntletScore == null
-        ? '4 games · same puzzles for everyone today'
+        ? '6 games · same puzzles for everyone today'
         : 'Today: $gauntletScore points · tap to play again';
     return Container(
       padding: const EdgeInsets.all(1.6),

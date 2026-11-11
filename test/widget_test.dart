@@ -142,4 +142,33 @@ void main() {
 
     expect(rank.vibrationOn, isFalse);
   });
+
+  testWidgets('bottom bar switches between Play, Progress and Settings',
+      (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Progress'));
+    await tester.pumpAndSettle();
+    expect(find.text('Brain age'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsNothing);
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vibration'), findsOneWidget);
+
+    await tester.tap(find.text('Play'));
+    await tester.pumpAndSettle();
+    expect(find.text('ZED-9'), findsOneWidget);
+  });
+
+  testWidgets('Gauntlet intro lists all six games', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('DAILY GAUNTLET'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Math Rush'), findsOneWidget);
+    expect(find.text('Color Clash'), findsOneWidget);
+    expect(find.textContaining('4 of 6'), findsOneWidget);
+  });
 }

@@ -4,7 +4,7 @@ import '../core/ads_service.dart';
 import '../core/rank_service.dart';
 import '../core/reminder_service.dart';
 import '../core/theme.dart';
-import 'home_screen.dart';
+import 'main_shell.dart';
 import '../widgets/fx_widgets.dart';
 
 /// Three short pages shown the first time the app opens.
@@ -60,7 +60,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) => HomeScreen(
+        builder: (_) => MainShell(
           rank: widget.rank,
           ads: widget.ads,
           reminders: widget.reminders,

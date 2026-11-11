@@ -8,10 +8,12 @@ import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
 import '../games/pattern/pattern_screen.dart';
 import '../games/precision/precision_screen.dart';
+import '../games/quiz/quiz_screen.dart';
+import '../games/quiz/quiz_specs.dart';
 import '../games/reflex/reflex_screen.dart';
 import '../widgets/fx_widgets.dart';
 
-/// Plays all four games in a row and adds up one score out of 1000.
+/// Plays all six games in a row and adds up one score out of 1000.
 class GauntletScreen extends StatefulWidget {
   const GauntletScreen({super.key, required this.rank, this.ads});
 
@@ -28,7 +30,12 @@ class _GauntletScreenState extends State<GauntletScreen> {
     'Memory',
     'Precision',
     'Pattern',
+    'Math Rush',
+    'Color Clash',
   ];
+
+  /// Wins needed to beat Zed (two thirds of the games).
+  static const int _winTarget = 4;
   static const List<String> _months = [
     'Jan',
     'Feb',
@@ -58,8 +65,20 @@ class _GauntletScreenState extends State<GauntletScreen> {
       case 2:
         return PrecisionScreen(
             rank: widget.rank, gauntlet: true, seed: seed + 2);
-      default:
+      case 3:
         return PatternScreen(rank: widget.rank, gauntlet: true, seed: seed + 3);
+      case 4:
+        return QuizScreen(
+            spec: const MathRushSpec(),
+            rank: widget.rank,
+            gauntlet: true,
+            seed: seed + 4);
+      default:
+        return QuizScreen(
+            spec: const ColorClashSpec(),
+            rank: widget.rank,
+            gauntlet: true,
+            seed: seed + 5);
     }
   }
 
@@ -84,7 +103,8 @@ class _GauntletScreenState extends State<GauntletScreen> {
       setState(() => _results.add(result));
     }
     final reward =
-        await widget.rank.onGauntletDone(DateTime.now(), _wins, _total);
+        await widget.rank.onGauntletDone(DateTime.now(), _wins, _total,
+            games: _names.length);
     widget.ads?.onMatchFinished();
     if (!mounted) return;
     setState(() {
@@ -94,17 +114,19 @@ class _GauntletScreenState extends State<GauntletScreen> {
   }
 
   int get _wins => _results.where((r) => r.won).length;
-  int get _total => _results.fold<int>(0, (sum, r) => sum + r.score);
+  /// Each game is worth up to 250; scaled so the whole run is out of 1000.
+  int get _total =>
+      _results.fold<int>(0, (sum, r) => sum + r.score) * 4 ~/ _names.length;
 
   String get _verdict {
-    if (_wins >= 3) return 'YOU BEAT ZED';
-    if (_wins == 2) return 'DRAW';
+    if (_wins >= _winTarget) return 'YOU BEAT ZED';
+    if (_wins == _winTarget - 1) return 'DRAW';
     return 'ZED WINS';
   }
 
   Color get _verdictColor {
-    if (_wins >= 3) return AppColors.lime;
-    if (_wins == 2) return AppColors.amber;
+    if (_wins >= _winTarget) return AppColors.lime;
+    if (_wins == _winTarget - 1) return AppColors.amber;
     return AppColors.coralSoft;
   }
 
@@ -112,7 +134,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     final now = DateTime.now();
     final text =
         'Beat the Bot, Daily Gauntlet ${now.day} ${_months[now.month - 1]}: '
-        '$_total points, beat Zed in $_wins of 4 games.';
+        '$_total points, beat Zed in $_wins of ${_names.length} games.';
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -169,7 +191,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
           style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
       const SizedBox(height: 6),
       const Text(
-        'Four games in a row against Zed. Beat him in 3 of 4 to win.',
+        'Six games in a row against Zed. Beat him in 4 of 6 to win.',
         style: TextStyle(color: AppColors.muted, fontSize: 16, height: 1.4),
       ),
       const SizedBox(height: 18),
@@ -267,7 +289,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       Text('$_total',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w700)),
-      Text('out of 1000 · beat Zed in $_wins of 4',
+      Text('out of 1000 · beat Zed in $_wins of ${_names.length}',
           textAlign: TextAlign.center,
           style: const TextStyle(color: AppColors.muted, fontSize: 15)),
       const SizedBox(height: 20),

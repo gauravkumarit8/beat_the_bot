@@ -516,4 +516,12 @@ void main() {
     final b = DailyTwist.forDate(DateTime(2026, 10, 21, 22));
     expect(a.title, b.title);
   });
+
+  test('a perfect six-game Gauntlet needs six wins', () async {
+    final s = await makeService({});
+    await s.onGauntletDone(DateTime(2026, 10, 22), 5, 800, games: 6);
+    expect(s.perfectGauntlets, 0);
+    await s.onGauntletDone(DateTime(2026, 10, 22), 6, 900, games: 6);
+    expect(s.perfectGauntlets, 1);
+  });
 }

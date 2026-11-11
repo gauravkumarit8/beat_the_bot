@@ -7,6 +7,7 @@ import '../../core/ads_service.dart';
 import '../../core/brag.dart';
 import '../../core/challenge.dart';
 import '../../core/difficulty.dart';
+import '../../core/game_result.dart';
 import '../../core/haptics.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
@@ -28,12 +29,20 @@ class QuizScreen extends StatefulWidget {
     required this.spec,
     required this.rank,
     this.ads,
+    this.gauntlet = false,
+    this.seed,
     this.challenge,
   });
 
   final QuizSpec spec;
   final RankService rank;
   final AdsService? ads;
+
+  /// When true, the game hands its result back instead of paying rewards.
+  final bool gauntlet;
+
+  /// Same seed gives the same questions (Daily Gauntlet).
+  final int? seed;
 
   /// A friend's challenge to beat. Replays their seed and level.
   final Challenge? challenge;
@@ -92,7 +101,8 @@ class _QuizScreenState extends State<QuizScreen>
   }
 
   void _reseed() {
-    _matchSeed = widget.challenge?.seed ?? Random().nextInt(1 << 24);
+    _matchSeed =
+        widget.challenge?.seed ?? widget.seed ?? Random().nextInt(1 << 24);
   }
 
   void _startQuestion() {
@@ -163,6 +173,15 @@ class _QuizScreenState extends State<QuizScreen>
       return;
     }
     await widget.rank.recordResult(widget.spec.id, _level, won);
+    if (widget.gauntlet) {
+      if (!mounted) return;
+      setState(() {
+        _won = won;
+        _mood = won ? ZedMood.shocked : ZedMood.smug;
+        _phase = _Phase.matchOver;
+      });
+      return;
+    }
     Rank? up;
     final improved = _youTotal > widget.rank.quizBest(widget.spec.id);
     if (improved) {
@@ -449,6 +468,7 @@ class _QuizScreenState extends State<QuizScreen>
           ],
         );
       case _Phase.matchOver:
+        if (widget.gauntlet) return _gauntletPanel();
         final ch = widget.challenge;
         if (ch != null) {
           return ChallengeResultPanel(
@@ -535,6 +555,30 @@ class _QuizScreenState extends State<QuizScreen>
           ],
         );
     }
+  }
+
+  GameResult _result() => GameResult(
+        game: widget.spec.title,
+        won: _won,
+        score: min(200, _youTotal * 200 ~/ 1500) + (_won ? 50 : 0),
+      );
+
+  Widget _gauntletPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Your score $_youTotal  ·  Zed $_zedTotal',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_result()),
+          child: const Text('CONTINUE'),
+        ),
+      ],
+    );
   }
 
   Widget _hint(String text) {

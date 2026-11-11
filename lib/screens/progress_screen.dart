@@ -13,7 +13,11 @@ import '../widgets/fx_widgets.dart';
 
 /// Shows how the player is improving, plus a weekly ladder against bots.
 class ProgressScreen extends StatelessWidget {
-  const ProgressScreen({super.key, required this.rank, this.ads});
+  const ProgressScreen(
+      {super.key, required this.rank, this.ads, this.embedded = false});
+
+  /// True when shown as a bottom-navigation tab (no Back button).
+  final bool embedded;
 
   final RankService rank;
   final AdsService? ads;
@@ -81,11 +85,14 @@ class ProgressScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      tooltip: 'Back',
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                    ),
+                    if (!embedded)
+                      IconButton(
+                        tooltip: 'Back',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                      )
+                    else
+                      const SizedBox(height: 12),
                     const Text('Progress',
                         style: TextStyle(
                             fontSize: 32, fontWeight: FontWeight.w700)),
