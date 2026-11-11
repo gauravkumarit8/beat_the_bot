@@ -33,6 +33,7 @@ class HomeScreen extends StatefulWidget {
     this.onOpenProgress,
     this.onOpenSettings,
     this.refresh,
+    this.showBanner = true,
   });
 
   final RankService rank;
@@ -46,6 +47,10 @@ class HomeScreen extends StatefulWidget {
 
   /// The shell pings this when the Play tab is shown again.
   final Listenable? refresh;
+
+  /// The shell turns this off while another tab is showing, so a hidden
+  /// Home does not keep a banner ad loaded.
+  final bool showBanner;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -317,6 +322,31 @@ class _HomeScreenState extends State<HomeScreen>
         subtitle: 'You are now ${current.name.toUpperCase()}. Zed noticed.',
       );
     }
+    // Optional bonus: a quiet offer, never a pop-up ad.
+    final ads = widget.ads;
+    if (ads != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 10),
+          content: Text('Want double? Watch a short ad for +${reward.points} RP.'),
+          action: SnackBarAction(
+            label: 'WATCH AD',
+            onPressed: () => ads.showRewarded(
+              onReward: () async {
+                await widget.rank.doubleChest(DateTime.now(), reward.points);
+                if (mounted) setState(() {});
+              },
+              onNotReady: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Ad not ready yet. Try again in a moment.')),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _enterChallenge() async {
@@ -446,7 +476,8 @@ class _HomeScreenState extends State<HomeScreen>
         rank.totalWins + rank.totalLosses >= 1;
 
     return Scaffold(
-      bottomNavigationBar: ads == null ? null : AdBanner(ads: ads),
+      bottomNavigationBar:
+          ads == null || !widget.showBanner ? null : AdBanner(ads: ads),
       body: Stack(
         children: [
           Positioned.fill(child: FutureBackdrop(t: _fx)),

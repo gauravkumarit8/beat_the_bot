@@ -144,6 +144,9 @@ class RankService {
       'onboarded',
       'reminderOn',
       'reminderMinutes',
+      'adsFirstSeen',
+      'adDay',
+      'adCount',
     };
     for (final key in _prefs.getKeys().toList()) {
       if (!keep.contains(key)) await _prefs.remove(key);
@@ -207,6 +210,16 @@ class RankService {
 
   bool chestReady(DateTime now) =>
       !chestOpened(now) && chestTasksDone(now) >= 3;
+
+  bool chestDoubled(DateTime now) =>
+      _prefs.getString('chestDoubledDay') == _key(now);
+
+  /// Rewarded ad on the chest: pay the same points a second time, once a day.
+  Future<Rank?> doubleChest(DateTime now, int points) async {
+    if (!chestOpened(now) || chestDoubled(now) || points <= 0) return null;
+    await _prefs.setString('chestDoubledDay', _key(now));
+    return _add(points);
+  }
 
   /// Base chest size: 25 RP plus 5 for each streak day, up to 7 days.
   int get chestBase => 25 + 5 * (streak > 7 ? 7 : streak);

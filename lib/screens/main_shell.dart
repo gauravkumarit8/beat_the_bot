@@ -62,6 +62,7 @@ class _MainShellState extends State<MainShell> {
               onOpenProgress: () => _select(1),
               onOpenSettings: () => _select(2),
               refresh: _homeRefresh,
+              showBanner: _index == 0,
             ),
             // Built only while visible, so they always show fresh numbers.
             if (_index == 1)

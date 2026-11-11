@@ -23,12 +23,41 @@ class AdIds {
 }
 
 class AdsService {
-  AdsService(this._prefs);
+  AdsService(this._prefs) {
+    // Remember the first day, so new players get a few ad-free interstitial days.
+    if (_prefs.getString('adsFirstSeen') == null) {
+      _prefs.setString('adsFirstSeen', DateTime.now().toIso8601String());
+    }
+  }
 
   final SharedPreferences _prefs;
 
   static const int _matchesBetweenInterstitials = 2;
   static const Duration _minGap = Duration(seconds: 90);
+
+  /// New players see no full-screen ads for this many days.
+  static const Duration _newPlayerGrace = Duration(days: 2);
+
+  /// Never more than this many full-screen ads in one day.
+  static const int _maxInterstitialsPerDay = 6;
+
+  bool get _inNewPlayerGrace {
+    final first = DateTime.tryParse(_prefs.getString('adsFirstSeen') ?? '');
+    return first != null && DateTime.now().difference(first) < _newPlayerGrace;
+  }
+
+  static String _dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
+  bool get _dailyCapReached =>
+      _prefs.getString('adDay') == _dayKey(DateTime.now()) &&
+      (_prefs.getInt('adCount') ?? 0) >= _maxInterstitialsPerDay;
+
+  void _countInterstitial() {
+    final today = _dayKey(DateTime.now());
+    final same = _prefs.getString('adDay') == today;
+    _prefs.setString('adDay', today);
+    _prefs.setInt('adCount', same ? (_prefs.getInt('adCount') ?? 0) + 1 : 1);
+  }
 
   InterstitialAd? _interstitial;
   RewardedAd? _rewarded;
@@ -118,6 +147,7 @@ class AdsService {
 
   void showInterstitialIfDue() {
     if (adsRemoved) return;
+    if (_inNewPlayerGrace || _dailyCapReached) return;
     if (_matchesSinceAd < _matchesBetweenInterstitials) return;
     final last = _lastInterstitial;
     if (last != null && DateTime.now().difference(last) < _minGap) return;
@@ -139,6 +169,7 @@ class AdsService {
     _interstitial = null;
     _matchesSinceAd = 0;
     _lastInterstitial = DateTime.now();
+    _countInterstitial();
     ad.show();
   }
 

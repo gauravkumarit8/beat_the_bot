@@ -552,4 +552,23 @@ void main() {
     expect(await s.openChest(day), isNull);
     expect(s.chestReady(DateTime(2026, 10, 23)), isFalse);
   });
+
+  test('doubling the chest pays once a day and only after opening', () async {
+    final day = DateTime(2026, 10, 22);
+    final s = await makeService({
+      'warmupDay': '2026-10-22',
+      'dareDay': '2026-10-22',
+      'gauntletDay': '2026-10-22',
+      'gauntletTodayScore': 500,
+    });
+    await s.doubleChest(day, 30);
+    expect(s.chestDoubled(day), isFalse); // chest not opened yet
+    final reward = await s.openChest(day, rng: Random(3));
+    final afterOpen = s.rankPoints;
+    await s.doubleChest(day, reward!.points);
+    expect(s.rankPoints, afterOpen + reward.points);
+    await s.doubleChest(day, reward.points);
+    expect(s.rankPoints, afterOpen + reward.points);
+    expect(s.chestDoubled(day), isTrue);
+  });
 }
