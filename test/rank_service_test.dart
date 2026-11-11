@@ -633,4 +633,12 @@ void main() {
     await s.resetProgress();
     expect(s.ratingAsked, isTrue); // reset does not make it ask again
   });
+
+  test('new achievements: Treasure hunter and Number whisperer', () async {
+    final s = await makeService({'chestsOpened': 6, 'quizBest_sense': 999});
+    expect(await s.checkAchievements(), isEmpty);
+    final s2 = await makeService({'chestsOpened': 7, 'quizBest_sense': 1000});
+    final ids = [for (final a in await s2.checkAchievements()) a.id];
+    expect(ids, containsAll(['chest_7', 'sense_1000']));
+  });
 }

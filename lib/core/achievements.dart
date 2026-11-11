@@ -143,6 +143,18 @@ final List<Achievement> allAchievements = [
     isMet: (r) => r.quizBest('color') >= 1000,
   ),
   Achievement(
+    id: 'sense_1000',
+    title: 'Number whisperer',
+    description: 'Score 1000 or more in Number Sense.',
+    isMet: (r) => r.quizBest('sense') >= 1000,
+  ),
+  Achievement(
+    id: 'chest_7',
+    title: 'Treasure hunter',
+    description: 'Open 7 daily chests.',
+    isMet: (r) => r.chestsOpened >= 7,
+  ),
+  Achievement(
     id: 'pattern_600',
     title: 'Pattern master',
     description: 'Score 600 or more in Pattern.',
