@@ -32,7 +32,9 @@ void main() {
     await pumpApp(tester);
 
     expect(find.text('ZED-9'), findsOneWidget);
-    expect(find.text("ZED'S DARE"), findsOneWidget);
+    // The TODAY strip scrolls sideways and builds only nearby tiles, so
+    // check the first ones (the dare and twist tiles sit further along).
+    expect(find.text('WEEKLY BOSS'), findsOneWidget);
     expect(find.text('DAILY CHEST'), findsOneWidget);
     expect(find.textContaining('ROOKIE'), findsWidgets);
     expect(find.text('Reflex'), findsOneWidget);
