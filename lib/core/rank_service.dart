@@ -145,6 +145,7 @@ class RankService {
       'reminderOn',
       'reminderMinutes',
       'adsFirstSeen',
+      'ratingAsked',
       'adDay',
       'adCount',
     };
@@ -193,6 +194,17 @@ class RankService {
   }
 
   bool dareDone(DateTime now) => _prefs.getString('dareDay') == _key(now);
+
+  // ---- Rating prompt ---------------------------------------------------------
+
+  bool get ratingAsked => _prefs.getBool('ratingAsked') ?? false;
+
+  Future<void> markRatingAsked() => _prefs.setBool('ratingAsked', true);
+
+  /// A happy moment: 3-day streak, 5 wins, and the last match was a win.
+  /// Only ever asked once.
+  bool shouldAskRating(DateTime now) =>
+      !ratingAsked && streak >= 3 && totalWins >= 5 && winStreak >= 1;
 
   // ---- Zed's twist of the day ---------------------------------------------
 

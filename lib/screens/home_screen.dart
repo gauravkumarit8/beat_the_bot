@@ -13,6 +13,7 @@ import '../widgets/challenge_dialog.dart';
 import '../widgets/fx_widgets.dart';
 import '../widgets/zed_face.dart';
 import '../core/rank_service.dart';
+import '../core/rating_service.dart';
 import '../core/reminder_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
@@ -323,6 +324,8 @@ class _HomeScreenState extends State<HomeScreen>
         subtitle: 'You are now ${current.name.toUpperCase()}. Zed noticed.',
       );
     }
+    // A good moment to ask for a rating, once ever.
+    await maybeAskForRating(widget.rank);
     // Optional bonus: a quiet offer, never a pop-up ad.
     final ads = widget.ads;
     if (ads != null && mounted) {

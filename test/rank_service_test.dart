@@ -614,4 +614,21 @@ void main() {
     expect(s.rankPoints, before + RankService.twistBonus);
     expect(s.twistDone(day), isTrue);
   });
+
+  test('the rating prompt waits for a happy moment and asks only once', () async {
+    final day = DateTime(2026, 10, 22);
+    final fresh = await makeService({});
+    expect(fresh.shouldAskRating(day), isFalse);
+
+    final s = await makeService({'streak': 3, 'totalWins': 5, 'winStreak': 1});
+    expect(s.shouldAskRating(day), isTrue);
+    await s.markRatingAsked();
+    expect(s.shouldAskRating(day), isFalse);
+
+    final lost = await makeService({'streak': 3, 'totalWins': 5, 'winStreak': 0});
+    expect(lost.shouldAskRating(day), isFalse);
+
+    await s.resetProgress();
+    expect(s.ratingAsked, isTrue); // reset does not make it ask again
+  });
 }
