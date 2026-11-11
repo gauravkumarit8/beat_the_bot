@@ -194,6 +194,19 @@ class RankService {
 
   bool dareDone(DateTime now) => _prefs.getString('dareDay') == _key(now);
 
+  // ---- Zed's twist of the day ---------------------------------------------
+
+  static const int twistBonus = 10;
+
+  bool twistDone(DateTime now) => _prefs.getString('twistDay') == _key(now);
+
+  /// The first win under today's twist pays a small bonus, once a day.
+  Future<Rank?> onTwistWin(DateTime now) async {
+    if (twistDone(now)) return null;
+    await _prefs.setString('twistDay', _key(now));
+    return _add(twistBonus);
+  }
+
   // ---- Weekly Boss ----------------------------------------------------------
   // Every win hurts this week's boss: 5 on Easy, 10 on Medium, 15 on Hard.
   // Take all 100 HP before Sunday ends for a big reward.

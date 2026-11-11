@@ -9,6 +9,7 @@ import '../../core/challenge.dart';
 import '../../core/difficulty.dart';
 import '../../core/game_result.dart';
 import '../../core/haptics.dart';
+import '../../core/twist.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
 import '../../core/zed_voice.dart';
@@ -58,6 +59,18 @@ class _QuizScreenState extends State<QuizScreen>
 
   late Level _level;
   late int _matchSeed;
+
+  /// Today's twist. Not used in the Gauntlet or in friend challenges.
+  ZedTwist? get _twist => (widget.gauntlet || widget.challenge != null)
+      ? null
+      : twistForDay(DateTime.now());
+
+  int get _rounds => widget.spec.rounds + (_twist?.extraRounds ?? 0);
+
+  Duration _timeFor() => Duration(
+      milliseconds: (widget.spec.timeFor(_level).inMilliseconds *
+              (_twist?.timeFactor ?? 1.0))
+          .round());
   bool _weak = false;
 
   _Phase _phase = _Phase.ready;
@@ -82,7 +95,7 @@ class _QuizScreenState extends State<QuizScreen>
     _reseed();
     _weak = widget.challenge == null && widget.rank.zedWeakened;
     if (_weak) widget.rank.setZedWeakened(false);
-    _ctrl.duration = widget.spec.timeFor(_level);
+    _ctrl.duration = _timeFor();
     final c = widget.challenge;
     _taunt = c != null
         ? 'Your friend scored ${c.score}. Beat that.'
@@ -128,7 +141,9 @@ class _QuizScreenState extends State<QuizScreen>
     final correct = option != null && option == q.answer;
     final remaining = 1 - _ctrl.value;
     final gain = correct ? 100 + (50 * remaining).round() : 0;
-    final chance = widget.spec.zedAccuracy(_level) - (_weak ? 0.15 : 0);
+    final chance = widget.spec.zedAccuracy(_level) -
+        (_weak ? 0.15 : 0) +
+        (_twist?.zedAccuracyDelta ?? 0);
     final zedGain =
         _zedRng.nextDouble() < chance ? 110 + _zedRng.nextInt(30) : 0;
     if (correct) {
@@ -150,7 +165,7 @@ class _QuizScreenState extends State<QuizScreen>
   }
 
   void _next() {
-    if (_round >= widget.spec.rounds) {
+    if (_round >= _rounds) {
       _finish();
       return;
     }
@@ -183,7 +198,9 @@ class _QuizScreenState extends State<QuizScreen>
       return;
     }
     Rank? up;
-    final improved = _youTotal > widget.rank.quizBest(widget.spec.id);
+    // Twist days play by different rules, so their scores are not bests.
+    final improved =
+        _twist == null && _youTotal > widget.rank.quizBest(widget.spec.id);
     if (improved) {
       await widget.rank.setQuizBest(widget.spec.id, _youTotal);
       up = await widget.rank.onLevelPassed();
@@ -194,6 +211,10 @@ class _QuizScreenState extends State<QuizScreen>
     }
     final warmupUp = await widget.rank.onWarmupDone(DateTime.now());
     up = warmupUp ?? up;
+    if (won && _twist != null) {
+      final twistUp = await widget.rank.onTwistWin(DateTime.now());
+      up = twistUp ?? up;
+    }
     widget.ads?.onMatchFinished();
     if (!mounted) return;
     setState(() {
@@ -211,7 +232,7 @@ class _QuizScreenState extends State<QuizScreen>
     _weak = widget.rank.zedWeakened;
     if (_weak) widget.rank.setZedWeakened(false);
     _reseed();
-    _ctrl.duration = widget.spec.timeFor(_level);
+    _ctrl.duration = _timeFor();
     setState(() {
       _phase = _Phase.ready;
       _round = 1;
@@ -295,7 +316,7 @@ class _QuizScreenState extends State<QuizScreen>
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '${widget.spec.title.toUpperCase()} · ROUND $_round / ${widget.spec.rounds}',
+              '${widget.spec.title.toUpperCase()} · ROUND $_round / $_rounds',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -341,11 +362,34 @@ class _QuizScreenState extends State<QuizScreen>
   Widget _promptArea() {
     final q = _q;
     if (q == null) {
-      return Text(
-        widget.spec.intro,
-        textAlign: TextAlign.center,
-        style:
-            const TextStyle(color: AppColors.muted, fontSize: 16, height: 1.4),
+      final twist = _twist;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.spec.intro,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                color: AppColors.muted, fontSize: 16, height: 1.4),
+          ),
+          if (twist != null) ...[
+            const SizedBox(height: 18),
+            Text("ZED'S TWIST: ${twist.title.toUpperCase()}",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: AppColors.amber,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1)),
+            const SizedBox(height: 4),
+            Text(
+              '${twist.rule} First win today: +${RankService.twistBonus} RP.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AppColors.muted, fontSize: 14, height: 1.4),
+            ),
+          ],
+        ],
       );
     }
     return Column(
@@ -463,7 +507,7 @@ class _QuizScreenState extends State<QuizScreen>
             FilledButton(
               onPressed: _next,
               child:
-                  Text(_round >= widget.spec.rounds ? 'SEE RESULT' : 'NEXT'),
+                  Text(_round >= _rounds ? 'SEE RESULT' : 'NEXT'),
             ),
           ],
         );
@@ -530,7 +574,7 @@ class _QuizScreenState extends State<QuizScreen>
               ),
               const SizedBox(height: 10),
             ],
-            if (_won) ...[
+            if (_won && _twist == null) ...[
               OutlinedButton(
                 onPressed: _challengeFriend,
                 child: const Text('CHALLENGE A FRIEND'),

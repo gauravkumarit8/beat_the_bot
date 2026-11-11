@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:beat_the_bot/core/dare.dart';
 import 'package:beat_the_bot/core/difficulty.dart';
+import 'package:beat_the_bot/core/twist.dart';
 import 'package:beat_the_bot/core/zed_skins.dart';
 import 'package:beat_the_bot/core/rank_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -590,5 +591,27 @@ void main() {
     expect(s.bossKills, 1); // no second payout the same week
     // A new week brings a fresh boss.
     expect(s.bossDamage(DateTime(2026, 10, 28)), 0);
+  });
+
+  test('the daily twist is the same all day and changes day to day', () {
+    final a = twistForDay(DateTime(2026, 10, 22, 8));
+    final b = twistForDay(DateTime(2026, 10, 22, 23));
+    expect(a.id, b.id);
+    final ids = {
+      for (var d = 0; d < 3; d++) twistForDay(DateTime(2026, 10, 22 + d)).id,
+    };
+    expect(ids.length, zedTwists.length);
+  });
+
+  test('the first twist win of the day pays once', () async {
+    final day = DateTime(2026, 10, 22);
+    final s = await makeService({});
+    expect(s.twistDone(day), isFalse);
+    final before = s.rankPoints;
+    await s.onTwistWin(day);
+    expect(s.rankPoints, before + RankService.twistBonus);
+    await s.onTwistWin(day);
+    expect(s.rankPoints, before + RankService.twistBonus);
+    expect(s.twistDone(day), isTrue);
   });
 }

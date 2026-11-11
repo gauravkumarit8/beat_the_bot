@@ -5,6 +5,7 @@ import '../core/challenge.dart';
 import '../core/dare.dart';
 import '../core/fx.dart';
 import '../core/difficulty.dart';
+import '../core/twist.dart';
 import '../core/weekly_goals.dart';
 import '../core/zed_voice.dart';
 import '../widgets/celebration.dart';
@@ -537,6 +538,12 @@ class _HomeScreenState extends State<HomeScreen>
                               dare: dare,
                               done: rank.dareDone(now),
                               onTap: () => _startGame(dare.game),
+                            ),
+                            const SizedBox(width: 12),
+                            _TwistTile(
+                              twist: twistForDay(now),
+                              done: rank.twistDone(now),
+                              onTap: () => _playQuiz(const MathRushSpec()),
                             ),
                             const SizedBox(width: 12),
                             _GoalsTile(
@@ -1126,6 +1133,54 @@ class _TileShell extends StatelessWidget {
             child: Padding(padding: const EdgeInsets.all(14), child: child),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TwistTile extends StatelessWidget {
+  const _TwistTile({
+    required this.twist,
+    required this.done,
+    required this.onTap,
+  });
+
+  final ZedTwist twist;
+  final bool done;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = done ? AppColors.lime : AppColors.amber;
+    return _TileShell(
+      onTap: done ? null : onTap,
+      accent: accent,
+      glow: !done,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                done ? Icons.check_circle_rounded : Icons.auto_awesome_rounded,
+                color: accent,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Text("ZED'S TWIST", style: _mono(size: 11)),
+            ],
+          ),
+          Text('${twist.title}: ${twist.rule}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          Text(
+            done ? 'DONE' : 'MATH & COLOR · +${RankService.twistBonus} RP',
+            style: _mono(size: 11, color: accent, weight: FontWeight.w800),
+          ),
+        ],
       ),
     );
   }
