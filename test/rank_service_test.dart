@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:beat_the_bot/core/dare.dart';
 import 'package:beat_the_bot/core/difficulty.dart';
 import 'package:beat_the_bot/core/zed_skins.dart';
@@ -523,5 +525,31 @@ void main() {
     expect(s.perfectGauntlets, 0);
     await s.onGauntletDone(DateTime(2026, 10, 22), 6, 900, games: 6);
     expect(s.perfectGauntlets, 1);
+  });
+
+  test('daily chest opens only after all three tasks, once a day', () async {
+    final day = DateTime(2026, 10, 22);
+    final locked = await makeService({'warmupDay': '2026-10-22'});
+    expect(locked.chestTasksDone(day), 1);
+    expect(locked.chestReady(day), isFalse);
+    expect(await locked.openChest(day), isNull);
+
+    final s = await makeService({
+      'warmupDay': '2026-10-22',
+      'dareDay': '2026-10-22',
+      'gauntletDay': '2026-10-22',
+      'gauntletTodayScore': 500,
+      'streak': 3,
+    });
+    expect(s.chestReady(day), isTrue);
+    expect(s.chestBase, 40);
+    final before = s.rankPoints;
+    final reward = await s.openChest(day, rng: Random(7));
+    expect(reward, isNotNull);
+    expect(reward!.points, reward.lucky ? 55 : 40);
+    expect(s.rankPoints, before + reward.points);
+    expect(s.chestOpened(day), isTrue);
+    expect(await s.openChest(day), isNull);
+    expect(s.chestReady(DateTime(2026, 10, 23)), isFalse);
   });
 }

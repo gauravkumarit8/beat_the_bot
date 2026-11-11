@@ -2,6 +2,8 @@
 // Offline rank, streak and daily-twist logic for Beat the Bot.
 // Needs: shared_preferences in pubspec.yaml. No server, no network.
 
+import 'dart:math';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'achievements.dart';
@@ -58,6 +60,23 @@ class GauntletReward {
   /// Rewards only count for the first Gauntlet each day.
   final bool firstToday;
   final int points;
+  final Rank? rankUp;
+}
+
+/// What the player found in the Daily Chest.
+class ChestReward {
+  const ChestReward({
+    required this.points,
+    required this.lucky,
+    required this.gotFreeze,
+    required this.rankUp,
+  });
+
+  final int points;
+
+  /// True when the surprise bonus was part of [points].
+  final bool lucky;
+  final bool gotFreeze;
   final Rank? rankUp;
 }
 
@@ -171,6 +190,41 @@ class RankService {
   }
 
   bool dareDone(DateTime now) => _prefs.getString('dareDay') == _key(now);
+
+  // ---- Daily Chest --------------------------------------------------------
+  // Three small tasks a day unlock a chest. Bigger streak, bigger chest.
+
+  /// Played at least one match (or the Gauntlet) today.
+  bool playedToday(DateTime now) => _warmupDay == _key(now);
+
+  /// How many of today's three tasks are done: a match, the dare, the Gauntlet.
+  int chestTasksDone(DateTime now) =>
+      (playedToday(now) ? 1 : 0) +
+      (dareDone(now) ? 1 : 0) +
+      (gauntletTodayScore(now) != null ? 1 : 0);
+
+  bool chestOpened(DateTime now) => _prefs.getString('chestDay') == _key(now);
+
+  bool chestReady(DateTime now) =>
+      !chestOpened(now) && chestTasksDone(now) >= 3;
+
+  /// Base chest size: 25 RP plus 5 for each streak day, up to 7 days.
+  int get chestBase => 25 + 5 * (streak > 7 ? 7 : streak);
+
+  /// Opens today's chest if it is ready. A random surprise can add 15 RP or
+  /// a streak freeze. Pass [rng] to make tests predictable.
+  Future<ChestReward?> openChest(DateTime now, {Random? rng}) async {
+    if (!chestReady(now)) return null;
+    final r = rng ?? Random();
+    await _prefs.setString('chestDay', _key(now));
+    final lucky = r.nextDouble() < 0.3;
+    final freeze = r.nextDouble() < 0.1;
+    final points = chestBase + (lucky ? 15 : 0);
+    final up = await _add(points);
+    if (freeze) await addFreeze();
+    return ChestReward(
+        points: points, lucky: lucky, gotFreeze: freeze, rankUp: up);
+  }
 
   Future<void> _queueNotice(String message) async {
     final list = _prefs.getStringList('notices') ?? <String>[];

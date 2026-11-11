@@ -61,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   int _missed = 0;
   int _lastRankIndex = 0;
+  bool _chestAnnounced = false;
 
   @override
   void initState() {
@@ -196,8 +197,10 @@ class _HomeScreenState extends State<HomeScreen>
     final notices = await widget.rank.takeNotices();
     if (!mounted) return;
     setState(() {});
+    final chestNow = widget.rank.chestReady(DateTime.now());
     final lines = [
       ...notices,
+      if (chestNow && !_chestAnnounced) 'Daily chest ready! Open it on Home.',
       if (unlocked.isNotEmpty)
         'Achievement unlocked: ${unlocked.map((a) => a.title).join(', ')}',
     ];
@@ -209,6 +212,7 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       );
     }
+    if (chestNow) _chestAnnounced = true;
     final current = widget.rank.rank;
     final climbed = current.index > _lastRankIndex;
     _lastRankIndex = current.index;
@@ -285,6 +289,34 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (_) => GauntletScreen(rank: widget.rank, ads: widget.ads)),
     );
     await _afterRoute();
+  }
+
+  Future<void> _openChest() async {
+    final reward = await widget.rank.openChest(DateTime.now());
+    if (reward == null || !mounted) return;
+    setState(() {});
+    final extras = [
+      if (reward.lucky) 'Lucky bonus!',
+      if (reward.gotFreeze) 'You found a streak freeze!',
+    ];
+    await showCelebration(
+      context,
+      title: 'DAILY CHEST',
+      badge: '+${reward.points} RP',
+      subtitle: extras.isEmpty
+          ? 'See you tomorrow. Zed will be waiting.'
+          : '${extras.join(' ')} See you tomorrow.',
+    );
+    final current = widget.rank.rank;
+    if (current.index > _lastRankIndex && mounted) {
+      _lastRankIndex = current.index;
+      await showCelebration(
+        context,
+        title: 'RANK UP',
+        badge: current.name.toUpperCase(),
+        subtitle: 'You are now ${current.name.toUpperCase()}. Zed noticed.',
+      );
+    }
   }
 
   Future<void> _enterChallenge() async {
@@ -456,6 +488,13 @@ class _HomeScreenState extends State<HomeScreen>
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
+                            _ChestTile(
+                              done: rank.chestTasksDone(now),
+                              opened: rank.chestOpened(now),
+                              reward: rank.chestBase,
+                              onTap: _openChest,
+                            ),
+                            const SizedBox(width: 12),
                             _DareTile(
                               dare: dare,
                               done: rank.dareDone(now),
@@ -1049,6 +1088,72 @@ class _TileShell extends StatelessWidget {
             child: Padding(padding: const EdgeInsets.all(14), child: child),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ChestTile extends StatelessWidget {
+  const _ChestTile({
+    required this.done,
+    required this.opened,
+    required this.reward,
+    required this.onTap,
+  });
+
+  final int done;
+  final bool opened;
+  final int reward;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = !opened && done >= 3;
+    final accent = opened
+        ? AppColors.lime
+        : ready
+            ? AppColors.amber
+            : Fx.cyan;
+    final String status;
+    if (opened) {
+      status = 'OPENED TODAY';
+    } else if (ready) {
+      status = 'TAP TO OPEN';
+    } else {
+      status = '$done / 3 TASKS';
+    }
+    return _TileShell(
+      onTap: ready ? onTap : null,
+      accent: accent,
+      glow: ready,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                opened ? Icons.check_circle_rounded : Icons.inventory_2_rounded,
+                color: accent,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Text('DAILY CHEST', style: _mono(size: 11)),
+            ],
+          ),
+          Text(
+            opened
+                ? 'Come back tomorrow'
+                : 'Match + dare + Gauntlet: +$reward RP and a surprise',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+          Text(
+            status,
+            style: _mono(size: 12, color: accent, weight: FontWeight.w800),
+          ),
+        ],
       ),
     );
   }
