@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../core/ads_service.dart';
@@ -272,9 +274,24 @@ class _HomeScreenState extends State<HomeScreen>
         _playQuiz(const MathRushSpec());
       case 'color':
         _playQuiz(const ColorClashSpec());
+      case 'sense':
+        _playQuiz(const NumberSenseSpec());
       default:
         _playPattern();
     }
+  }
+
+  void _playRandom() {
+    const games = [
+      'reflex',
+      'memory',
+      'precision',
+      'pattern',
+      'math',
+      'color',
+      'sense',
+    ];
+    _startGame(games[Random().nextInt(games.length)]);
   }
 
   Future<void> _openProgress() async {
@@ -390,6 +407,11 @@ class _HomeScreenState extends State<HomeScreen>
           rank: widget.rank,
           ads: widget.ads,
           challenge: challenge),
+      'sense' => QuizScreen(
+          spec: const NumberSenseSpec(),
+          rank: widget.rank,
+          ads: widget.ads,
+          challenge: challenge),
       _ =>
         PatternScreen(rank: widget.rank, ads: widget.ads, challenge: challenge),
     };
@@ -477,6 +499,20 @@ class _HomeScreenState extends State<HomeScreen>
         accent: Fx.magenta,
         line: best(rank.quizBest('color') > 0, '${rank.quizBest('color')} pts'),
         onTap: () => _playQuiz(const ColorClashSpec()),
+      ),
+      _GameInfo(
+        title: 'Number Sense',
+        icon: Icons.percent_rounded,
+        accent: AppColors.amber,
+        line: best(rank.quizBest('sense') > 0, '${rank.quizBest('sense')} pts'),
+        onTap: () => _playQuiz(const NumberSenseSpec()),
+      ),
+      _GameInfo(
+        title: 'Surprise me',
+        icon: Icons.casino_rounded,
+        accent: Fx.cyan,
+        line: 'Random game',
+        onTap: _playRandom,
       ),
     ];
   }
@@ -1196,7 +1232,7 @@ class _TwistTile extends StatelessWidget {
               style:
                   const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           Text(
-            done ? 'DONE' : 'MATH & COLOR · +${RankService.twistBonus} RP',
+            done ? 'DONE' : 'QUIZ GAMES · +${RankService.twistBonus} RP',
             style: _mono(size: 11, color: accent, weight: FontWeight.w800),
           ),
         ],

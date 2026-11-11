@@ -1,5 +1,5 @@
-/// Zed's twist of the day: a rule that really changes Math Rush and Color
-/// Clash for one day. Everyone gets the same twist, and the first win under
+/// Zed's twist of the day: a rule that really changes the quiz games (Math
+/// Rush, Color Clash and Number Sense) for one day. Everyone gets the same twist, and the first win under
 /// it pays a small bonus. Not used in the Daily Gauntlet or friend challenges,
 /// so those stay fair and comparable.
 class ZedTwist {

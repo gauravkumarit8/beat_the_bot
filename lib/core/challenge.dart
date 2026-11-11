@@ -23,6 +23,7 @@ class Challenge {
     'pattern': 'T',
     'math': 'A',
     'color': 'C',
+    'sense': 'N',
   };
 
   static const Map<Level, String> _levelChars = {
@@ -32,7 +33,7 @@ class Challenge {
   };
 
   static final RegExp _pattern =
-      RegExp(r'BTB-([MPTAC])([EMH])-([0-9A-Z]+)-(\d{1,4})-([0-9A-Z])');
+      RegExp(r'BTB-([MPTACN])([EMH])-([0-9A-Z]+)-(\d{1,4})-([0-9A-Z])');
 
   /// Example: BTB-MH-1K9X2-7-Q
   String get code {
@@ -74,6 +75,7 @@ class Challenge {
         'precision' => 'Precision',
         'math' => 'Math Rush',
         'color' => 'Color Clash',
+        'sense' => 'Number Sense',
         _ => 'Pattern',
       };
 
