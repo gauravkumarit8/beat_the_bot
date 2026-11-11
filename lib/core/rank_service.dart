@@ -194,6 +194,58 @@ class RankService {
 
   bool dareDone(DateTime now) => _prefs.getString('dareDay') == _key(now);
 
+  // ---- Weekly Boss ----------------------------------------------------------
+  // Every win hurts this week's boss: 5 on Easy, 10 on Medium, 15 on Hard.
+  // Take all 100 HP before Sunday ends for a big reward.
+
+  static const int bossHp = 100;
+  static const int bossReward = 60;
+  static const List<String> _bossNames = [
+    'Zed Prime',
+    'Zed Omega',
+    'Zed Zero',
+    'Zed Nova',
+  ];
+
+  /// This week's boss. Everyone gets the same one.
+  String bossName(DateTime now) {
+    final weeks = weekStart(now).millisecondsSinceEpoch ~/ 604800000;
+    return _bossNames[weeks % _bossNames.length];
+  }
+
+  bool _bossWeekIs(DateTime now) =>
+      _prefs.getString('bossWeek') == _key(weekStart(now));
+
+  /// Damage dealt to this week's boss so far (never more than [bossHp]).
+  int bossDamage(DateTime now) {
+    if (!_bossWeekIs(now)) return 0;
+    final d = _prefs.getInt('bossDamage') ?? 0;
+    return d > bossHp ? bossHp : d;
+  }
+
+  bool bossDefeated(DateTime now) => bossDamage(now) >= bossHp;
+
+  /// How many bosses the player has beaten in total.
+  int get bossKills => _prefs.getInt('bossKills') ?? 0;
+
+  Future<void> _hitBoss(DateTime now, Level played) async {
+    if (!_bossWeekIs(now)) {
+      await _prefs.setString('bossWeek', _key(weekStart(now)));
+      await _prefs.setInt('bossDamage', 0);
+    }
+    final before = _prefs.getInt('bossDamage') ?? 0;
+    if (before >= bossHp) return;
+    final after = before + 5 + 5 * played.index;
+    await _prefs.setInt('bossDamage', after);
+    if (after >= bossHp) {
+      await _prefs.setInt('bossKills', bossKills + 1);
+      await _add(bossReward);
+      await addFreeze();
+      await _queueNotice(
+          '${bossName(now)} defeated! +$bossReward RP and a streak freeze');
+    }
+  }
+
   // ---- Daily Chest --------------------------------------------------------
   // Three small tasks a day unlock a chest. Bigger streak, bigger chest.
 
@@ -570,6 +622,7 @@ class RankService {
     };
     await _prefs.setStringList('goalGames', beaten.toList());
     await _checkWeeklyGoals(today);
+    await _hitBoss(today, played);
   }
 
   String? get _lastPlayed => _prefs.getString('lastPlayed');

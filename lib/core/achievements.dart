@@ -83,6 +83,12 @@ final List<Achievement> allAchievements = [
     isMet: (r) => r.gauntletBest >= 800,
   ),
   Achievement(
+    id: 'boss_1',
+    title: 'Boss slayer',
+    description: 'Defeat a weekly boss.',
+    isMet: (r) => r.bossKills >= 1,
+  ),
+  Achievement(
     id: 'perfect',
     title: 'Clean sweep',
     description: 'Beat Zed in every Gauntlet game.',

@@ -519,6 +519,13 @@ class _HomeScreenState extends State<HomeScreen>
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
+                            _BossTile(
+                              name: rank.bossName(now),
+                              damage: rank.bossDamage(now),
+                              total: RankService.bossHp,
+                              reward: RankService.bossReward,
+                            ),
+                            const SizedBox(width: 12),
                             _ChestTile(
                               done: rank.chestTasksDone(now),
                               opened: rank.chestOpened(now),
@@ -1119,6 +1126,82 @@ class _TileShell extends StatelessWidget {
             child: Padding(padding: const EdgeInsets.all(14), child: child),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _BossTile extends StatelessWidget {
+  const _BossTile({
+    required this.name,
+    required this.damage,
+    required this.total,
+    required this.reward,
+  });
+
+  final String name;
+  final int damage;
+  final int total;
+  final int reward;
+
+  @override
+  Widget build(BuildContext context) {
+    final dead = damage >= total;
+    final accent = dead ? AppColors.lime : Fx.magenta;
+    return _TileShell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(dead
+                ? '$name is down. A new boss arrives on Monday.'
+                : 'Every win hurts the boss: Easy 5, Medium 10, Hard 15. '
+                    'Defeat it this week for +$reward RP and a streak freeze.'),
+          ),
+        );
+      },
+      accent: accent,
+      glow: !dead,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                dead ? Icons.check_circle_rounded : Icons.shield_rounded,
+                color: accent,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Text('WEEKLY BOSS', style: _mono(size: 11)),
+            ],
+          ),
+          Text(name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: (total - damage) / total,
+                  minHeight: 6,
+                  backgroundColor: AppColors.line,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                dead ? 'DEFEATED' : 'HP ${total - damage} / $total',
+                style: _mono(
+                    size: 12, color: accent, weight: FontWeight.w800),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

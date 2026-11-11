@@ -571,4 +571,24 @@ void main() {
     expect(s.rankPoints, afterOpen + reward.points);
     expect(s.chestDoubled(day), isTrue);
   });
+
+  test('wins hurt the weekly boss and defeating it pays once', () async {
+    final s = await makeService({});
+    final day = DateTime(2026, 10, 21); // a Wednesday
+    for (var i = 0; i < 6; i++) {
+      await s.recordResult('reflex', Level.hard, true, now: day);
+    }
+    expect(s.bossDamage(day), 90);
+    expect(s.bossDefeated(day), isFalse);
+    final freezes = s.freezes;
+    await s.recordResult('reflex', Level.hard, true, now: day);
+    expect(s.bossDefeated(day), isTrue);
+    expect(s.bossDamage(day), RankService.bossHp);
+    expect(s.bossKills, 1);
+    expect(s.freezes, freezes + 1);
+    await s.recordResult('reflex', Level.hard, true, now: day);
+    expect(s.bossKills, 1); // no second payout the same week
+    // A new week brings a fresh boss.
+    expect(s.bossDamage(DateTime(2026, 10, 28)), 0);
+  });
 }
