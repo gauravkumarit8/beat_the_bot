@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:in_app_review/in_app_review.dart';
 
 import '../core/ads_service.dart';
 import '../core/haptics.dart';
@@ -32,7 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Change this to wherever you host the privacy policy page.
   static const String _policyUrl =
-      'https://gauravkumarit8.github.io/beat-the-bot/privacy/';
+      'https://gauravkumarit8.github.io/beat_the_bot/privacy/';
 
   bool _adChoices = false;
 
@@ -161,6 +162,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _rate() async {
+    try {
+      await InAppReview.instance.openStoreListing();
+    } catch (_) {
+      // No store on this device: nothing to open.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ads = widget.ads;
@@ -241,6 +250,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1, color: AppColors.line),
                   ],
+                  ListTile(
+                    title: const Text('Rate Beat the Bot'),
+                    subtitle: const Text('Opens the Play Store',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13)),
+                    trailing: const Icon(Icons.chevron_right_rounded,
+                        color: AppColors.muted),
+                    onTap: _rate,
+                  ),
+                  const Divider(height: 1, color: AppColors.line),
                   ListTile(
                     title: const Text('Privacy'),
                     trailing: const Icon(Icons.chevron_right_rounded,

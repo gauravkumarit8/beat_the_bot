@@ -224,6 +224,15 @@ class _GauntletScreenState extends State<GauntletScreen> {
         style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.4),
       ),
       const SizedBox(height: 18),
+      if (widget.rank.gauntletTodayScore(DateTime.now()) != null) ...[
+        Text(
+          "Today's best: ${widget.rank.gauntletTodayScore(DateTime.now())} points",
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              color: AppColors.amber, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+      ],
       FilledButton(onPressed: _start, child: const Text('START')),
     ];
   }

@@ -550,7 +550,9 @@ void main() {
     expect(reward!.points, reward.lucky ? 55 : 40);
     expect(s.rankPoints, before + reward.points);
     expect(s.chestOpened(day), isTrue);
+    expect(s.chestsOpened, 1);
     expect(await s.openChest(day), isNull);
+    expect(s.chestsOpened, 1);
     expect(s.chestReady(DateTime(2026, 10, 23)), isFalse);
   });
 

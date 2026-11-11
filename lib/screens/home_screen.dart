@@ -69,6 +69,8 @@ class _HomeScreenState extends State<HomeScreen>
   int _missed = 0;
   int _lastRankIndex = 0;
   bool _chestAnnounced = false;
+  int _lastBossDamage = 0;
+  int _lastChestTasks = 0;
 
   @override
   void initState() {
@@ -76,6 +78,9 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _lastRankIndex = widget.rank.rank.index;
     widget.refresh?.addListener(_onRefresh);
+    final start = DateTime.now();
+    _lastBossDamage = widget.rank.bossDamage(start);
+    _lastChestTasks = widget.rank.chestTasksDone(start);
     _onOpen();
   }
 
@@ -204,9 +209,20 @@ class _HomeScreenState extends State<HomeScreen>
     final notices = await widget.rank.takeNotices();
     if (!mounted) return;
     setState(() {});
+    final moment = DateTime.now();
+    final bossDmg = widget.rank.bossDamage(moment);
+    final bossDelta = bossDmg - _lastBossDamage;
+    _lastBossDamage = bossDmg;
+    final tasks = widget.rank.chestTasksDone(moment);
+    final tasksUp = tasks > _lastChestTasks;
+    _lastChestTasks = tasks;
     final chestNow = widget.rank.chestReady(DateTime.now());
     final lines = [
       ...notices,
+      if (bossDelta > 0 && !widget.rank.bossDefeated(moment))
+        '${widget.rank.bossName(moment)} took $bossDelta damage. '
+            '${RankService.bossHp - bossDmg} HP left.',
+      if (tasksUp && tasks < 3) 'Daily chest: $tasks / 3 tasks done.',
       if (chestNow && !_chestAnnounced) 'Daily chest ready! Open it on Home.',
       if (unlocked.isNotEmpty)
         'Achievement unlocked: ${unlocked.map((a) => a.title).join(', ')}',

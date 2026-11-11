@@ -283,6 +283,9 @@ class RankService {
       (dareDone(now) ? 1 : 0) +
       (gauntletTodayScore(now) != null ? 1 : 0);
 
+  /// Chests opened in total.
+  int get chestsOpened => _prefs.getInt('chestsOpened') ?? 0;
+
   bool chestOpened(DateTime now) => _prefs.getString('chestDay') == _key(now);
 
   bool chestReady(DateTime now) =>
@@ -307,6 +310,7 @@ class RankService {
     if (!chestReady(now)) return null;
     final r = rng ?? Random();
     await _prefs.setString('chestDay', _key(now));
+    await _prefs.setInt('chestsOpened', chestsOpened + 1);
     final lucky = r.nextDouble() < 0.3;
     final freeze = r.nextDouble() < 0.1;
     final points = chestBase + (lucky ? 15 : 0);

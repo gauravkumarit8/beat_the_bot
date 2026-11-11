@@ -121,6 +121,7 @@ class ProgressScreen extends StatelessWidget {
                       _card(child: _calendar(now)),
                     ]),
                     _tab([
+                      _card(child: _lifetime()),
                       _card(child: _chart(now)),
                       _card(child: _skills()),
                       _card(child: _ladder(ladder)),
@@ -133,6 +134,46 @@ class ProgressScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _lifetime() {
+    Widget stat(String value, String label) => Expanded(
+          child: Column(
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(value,
+                    style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.lime)),
+              ),
+              const SizedBox(height: 2),
+              Text(label,
+                  textAlign: TextAlign.center,
+                  style:
+                      const TextStyle(color: AppColors.muted, fontSize: 12)),
+            ],
+          ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Lifetime',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            stat('${rank.totalWins}', 'Wins vs Zed'),
+            stat(rank.gauntletBest > 0 ? '${rank.gauntletBest}' : '--',
+                'Best Gauntlet'),
+            stat('${rank.bossKills}', 'Bosses beaten'),
+            stat('${rank.chestsOpened}', 'Chests opened'),
+          ],
+        ),
+      ],
     );
   }
 
