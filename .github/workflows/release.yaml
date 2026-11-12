@@ -52,6 +52,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned so a new Flutter release cannot break the build overnight.
+          # To upgrade, change this number and fix any Gradle/AGP complaints.
+          flutter-version: '3.47.9'
           cache: true
 
       - name: Create keystore and key.properties
