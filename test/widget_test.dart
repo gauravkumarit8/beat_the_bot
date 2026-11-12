@@ -140,7 +140,7 @@ void main() {
     expect(find.text('Vibration'), findsOneWidget);
 
     // Tap the whole row, which toggles the switch the same way a finger does.
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.widgetWithText(SwitchListTile, 'Vibration'));
     await tester.pumpAndSettle();
 
     expect(rank.vibrationOn, isFalse);

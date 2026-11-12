@@ -641,4 +641,22 @@ void main() {
     final ids = [for (final a in await s2.checkAchievements()) a.id];
     expect(ids, containsAll(['chest_7', 'sense_1000']));
   });
+
+  test('sound is on by default, can be switched off, and survives a reset', () async {
+    final s = await makeService({});
+    expect(s.soundOn, isTrue);
+    await s.setSound(false);
+    expect(s.soundOn, isFalse);
+    await s.resetProgress();
+    expect(s.soundOn, isFalse);
+  });
+
+  test('every match result is reported to the sound hook', () async {
+    final s = await makeService({});
+    final heard = <bool>[];
+    s.onMatchResult = heard.add;
+    await s.recordResult('reflex', Level.medium, true);
+    await s.recordResult('reflex', Level.medium, false);
+    expect(heard, [true, false]);
+  });
 }

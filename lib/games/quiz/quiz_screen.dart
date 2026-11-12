@@ -9,6 +9,7 @@ import '../../core/challenge.dart';
 import '../../core/difficulty.dart';
 import '../../core/game_result.dart';
 import '../../core/haptics.dart';
+import '../../core/sfx.dart';
 import '../../core/twist.dart';
 import '../../core/rank_service.dart';
 import '../../core/theme.dart';
@@ -146,6 +147,7 @@ class _QuizScreenState extends State<QuizScreen>
         (_twist?.zedAccuracyDelta ?? 0);
     final zedGain =
         _zedRng.nextDouble() < chance ? 110 + _zedRng.nextInt(30) : 0;
+    Sfx.play(correct ? Sound.correct : Sound.wrong);
     if (correct) {
       Haptics.selection();
     } else {

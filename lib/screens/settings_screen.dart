@@ -4,6 +4,7 @@ import 'package:in_app_review/in_app_review.dart';
 import '../core/ads_service.dart';
 import '../core/haptics.dart';
 import '../core/rank_service.dart';
+import '../core/sfx.dart';
 import '../core/reminder_service.dart';
 import '../core/theme.dart';
 import '../widgets/fx_widgets.dart';
@@ -48,6 +49,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ads == null) return;
     final needed = await ads.privacyOptionsRequired();
     if (mounted) setState(() => _adChoices = needed);
+  }
+
+  Future<void> _setSound(bool on) async {
+    await widget.rank.setSound(on);
+    Sfx.enabled = on;
+    if (on) Sfx.play(Sound.correct);
+    if (mounted) setState(() {});
   }
 
   Future<void> _setVibration(bool on) async {
@@ -194,12 +202,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
             const SizedBox(height: 18),
             GlassPanel(
-              child: SwitchListTile(
-                value: widget.rank.vibrationOn,
-                onChanged: _setVibration,
-                title: const Text('Vibration'),
-                subtitle: const Text('Feedback on taps and results',
-                    style: TextStyle(color: AppColors.muted, fontSize: 13)),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    value: widget.rank.soundOn,
+                    onChanged: _setSound,
+                    title: const Text('Sound effects'),
+                    subtitle: const Text('Short sounds for answers and results',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13)),
+                  ),
+                  const Divider(height: 1, color: AppColors.line),
+                  SwitchListTile(
+                    value: widget.rank.vibrationOn,
+                    onChanged: _setVibration,
+                    title: const Text('Vibration'),
+                    subtitle: const Text('Feedback on taps and results',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13)),
+                  ),
+                ],
               ),
             ),
             if (widget.reminders != null) ...[

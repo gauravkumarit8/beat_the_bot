@@ -116,6 +116,12 @@ class RankService {
   // ---- Settings -----------------------------------------------------------
 
   bool get vibrationOn => _prefs.getBool('vibration') ?? true;
+  bool get soundOn => _prefs.getBool('sound') ?? true;
+  Future<void> setSound(bool on) => _prefs.setBool('sound', on);
+
+  /// Called at the end of every match (win or loss). The app uses it to play
+  /// the win or lose sound.
+  void Function(bool won)? onMatchResult;
   Future<void> setVibration(bool on) => _prefs.setBool('vibration', on);
 
   bool get reminderOn => _prefs.getBool('reminderOn') ?? false;
@@ -140,6 +146,7 @@ class RankService {
     const keep = {
       'adsRemoved',
       'vibration',
+      'sound',
       'difficulty',
       'onboarded',
       'reminderOn',
@@ -601,6 +608,7 @@ class RankService {
   /// and loss counts, and pays the revenge bonus and Zed's daily dare.
   Future<void> recordResult(String game, Level played, bool won,
       {DateTime? now}) async {
+    onMatchResult?.call(won);
     final old = _autoLevel(game);
     final anchor = played.index.toDouble();
     var next = won

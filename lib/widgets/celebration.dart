@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../core/sfx.dart';
 import '../core/theme.dart';
 
 /// Full-screen celebration with confetti, for rank-ups and streak milestones.
@@ -11,6 +12,7 @@ Future<void> showCelebration(
   required String badge,
   required String subtitle,
 }) {
+  Sfx.play(Sound.celebrate);
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
