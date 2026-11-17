@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Change this to wherever you host the privacy policy page.
   static const String _policyUrl =
-      'https://gauravkumarit8.github.io/beat_the_bot/privacy/';
+      'https://gauravkumarit8.github.io/beat-the-bot/privacy/';
 
   bool _adChoices = false;
 
@@ -269,6 +269,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: const Icon(Icons.chevron_right_rounded,
                           color: AppColors.muted),
                       onTap: () => widget.ads?.showPrivacyOptions(),
+                    ),
+                    const Divider(height: 1, color: AppColors.line),
+                  ],
+                  if (ads != null) ...[
+                    ListTile(
+                      title: const Text('Ad insights'),
+                      subtitle: Text(
+                        'Stays on this phone: ${ads.brain.summary()}',
+                        style: const TextStyle(
+                            color: AppColors.muted, fontSize: 13),
+                      ),
                     ),
                     const Divider(height: 1, color: AppColors.line),
                   ],

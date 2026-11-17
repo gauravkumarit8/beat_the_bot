@@ -114,7 +114,11 @@ class _HomeScreenState extends State<HomeScreen>
     // Coming back to the app counts as showing up, so tomorrow's reminder is
     // rescheduled and today's is cancelled.
     if (state == AppLifecycleState.resumed) {
+      widget.ads?.onAppOpen();
       widget.reminders?.refresh(widget.rank);
+    }
+    if (state == AppLifecycleState.paused) {
+      widget.ads?.onAppPaused();
     }
   }
 
@@ -151,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _onOpen() async {
+    widget.ads?.onAppOpen();
     final result = await widget.rank.onAppOpen(DateTime.now());
     if (!mounted) return;
     setState(() => _missed = result?.missedDays ?? 0);

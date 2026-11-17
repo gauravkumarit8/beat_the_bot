@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'ad_brain.dart';
+
 /// Ad unit IDs. By default these are Google's official TEST IDs (Android).
 /// The release workflow passes your real IDs with --dart-define, so real IDs
 /// never need to be written into the code.
@@ -23,7 +25,7 @@ class AdIds {
 }
 
 class AdsService {
-  AdsService(this._prefs) {
+  AdsService(this._prefs) : brain = AdBrain(_prefs) {
     // Remember the first day, so new players get a few ad-free interstitial days.
     if (_prefs.getString('adsFirstSeen') == null) {
       _prefs.setString('adsFirstSeen', DateTime.now().toIso8601String());
@@ -32,8 +34,18 @@ class AdsService {
 
   final SharedPreferences _prefs;
 
-  static const int _matchesBetweenInterstitials = 2;
-  static const Duration _minGap = Duration(seconds: 90);
+  /// Learns on this phone when and how the player plays, and tunes how often
+  /// full-screen ads may appear.
+  final AdBrain brain;
+
+  /// Reports what each shown ad is estimated to have earned (from AdMob).
+  OnPaidEventCallback paidCallback(AdFormat format) =>
+      (ad, valueMicros, precision, currencyCode) =>
+          brain.onPaid(format, valueMicros.round(), DateTime.now());
+
+  void onAppOpen() => brain.onOpen(DateTime.now());
+
+  void onAppPaused() => brain.onAppPaused(DateTime.now());
 
   /// New players see no full-screen ads for this many days.
   static const Duration _newPlayerGrace = Duration(days: 2);
@@ -137,20 +149,27 @@ class AdsService {
       adUnitId: AdIds.interstitial,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) => _interstitial = ad,
+        onAdLoaded: (ad) {
+          ad.onPaidEvent = paidCallback(AdFormat.interstitial);
+          _interstitial = ad;
+        },
         onAdFailedToLoad: (error) => _interstitial = null,
       ),
     );
   }
 
-  void onMatchFinished() => _matchesSinceAd++;
+  void onMatchFinished() {
+    _matchesSinceAd++;
+    brain.onMatch(DateTime.now());
+  }
 
   void showInterstitialIfDue() {
     if (adsRemoved) return;
     if (_inNewPlayerGrace || _dailyCapReached) return;
-    if (_matchesSinceAd < _matchesBetweenInterstitials) return;
+    final now = DateTime.now();
+    if (_matchesSinceAd < brain.matchesBetweenAds(now)) return;
     final last = _lastInterstitial;
-    if (last != null && DateTime.now().difference(last) < _minGap) return;
+    if (last != null && now.difference(last) < brain.minGap(now)) return;
     final ad = _interstitial;
     if (ad == null) {
       _loadInterstitial();
@@ -159,6 +178,7 @@ class AdsService {
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
+        brain.onInterstitialClosed(DateTime.now());
         _loadInterstitial();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
@@ -180,7 +200,10 @@ class AdsService {
       adUnitId: AdIds.rewarded,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) => _rewarded = ad,
+        onAdLoaded: (ad) {
+          ad.onPaidEvent = paidCallback(AdFormat.rewarded);
+          _rewarded = ad;
+        },
         onAdFailedToLoad: (error) => _rewarded = null,
       ),
     );
@@ -254,6 +277,7 @@ class _AdBannerState extends State<AdBanner> {
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
+        onPaidEvent: widget.ads.paidCallback(AdFormat.banner),
         onAdLoaded: (_) {
           if (mounted) setState(() => _loaded = true);
         },
