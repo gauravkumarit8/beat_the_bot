@@ -117,6 +117,10 @@ class RankService {
 
   bool get vibrationOn => _prefs.getBool('vibration') ?? true;
   bool get soundOn => _prefs.getBool('sound') ?? true;
+
+  /// Calmer visuals for older phones and battery life.
+  bool get reduceEffects => _prefs.getBool('reduceFx') ?? false;
+  Future<void> setReduceEffects(bool on) => _prefs.setBool('reduceFx', on);
   Future<void> setSound(bool on) => _prefs.setBool('sound', on);
 
   /// Called at the end of every match (win or loss). The app uses it to play
@@ -147,6 +151,7 @@ class RankService {
       'adsRemoved',
       'vibration',
       'sound',
+      'reduceFx',
       'difficulty',
       'onboarded',
       'reminderOn',

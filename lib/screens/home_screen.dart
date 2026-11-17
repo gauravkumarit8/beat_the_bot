@@ -529,6 +529,8 @@ class _HomeScreenState extends State<HomeScreen>
     final now = DateTime.now();
     final line = zedHomeLine(rank: rank, now: now, missedDays: _missed);
     final dare = dareForDay(now);
+    // New players get a simpler Home: only the chest and the dare at first.
+    final eased = rank.playDays().length < 3;
     final goalsDone =
         weeklyGoals.where((g) => rank.weeklyGoalClaimed(g.id, now)).length;
     final showReminder = widget.reminders != null &&
@@ -580,13 +582,15 @@ class _HomeScreenState extends State<HomeScreen>
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
-                            _BossTile(
-                              name: rank.bossName(now),
-                              damage: rank.bossDamage(now),
-                              total: RankService.bossHp,
-                              reward: RankService.bossReward,
-                            ),
-                            const SizedBox(width: 12),
+                            if (!eased) ...[
+                              _BossTile(
+                                name: rank.bossName(now),
+                                damage: rank.bossDamage(now),
+                                total: RankService.bossHp,
+                                reward: RankService.bossReward,
+                              ),
+                              const SizedBox(width: 12),
+                            ],
                             _ChestTile(
                               done: rank.chestTasksDone(now),
                               opened: rank.chestOpened(now),
@@ -599,18 +603,20 @@ class _HomeScreenState extends State<HomeScreen>
                               done: rank.dareDone(now),
                               onTap: () => _startGame(dare.game),
                             ),
-                            const SizedBox(width: 12),
-                            _TwistTile(
-                              twist: twistForDay(now),
-                              done: rank.twistDone(now),
-                              onTap: () => _playQuiz(const MathRushSpec()),
-                            ),
-                            const SizedBox(width: 12),
-                            _GoalsTile(
-                              done: goalsDone,
-                              total: weeklyGoals.length,
-                              onTap: _openProgress,
-                            ),
+                            if (!eased) ...[
+                              const SizedBox(width: 12),
+                              _TwistTile(
+                                twist: twistForDay(now),
+                                done: rank.twistDone(now),
+                                onTap: () => _playQuiz(const MathRushSpec()),
+                              ),
+                              const SizedBox(width: 12),
+                              _GoalsTile(
+                                done: goalsDone,
+                                total: weeklyGoals.length,
+                                onTap: _openProgress,
+                              ),
+                            ],
                             if (showReminder) ...[
                               const SizedBox(width: 12),
                               _ReminderTile(

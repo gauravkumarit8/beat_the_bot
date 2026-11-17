@@ -659,4 +659,12 @@ void main() {
     await s.recordResult('reflex', Level.medium, false);
     expect(heard, [true, false]);
   });
+
+  test('reduce effects is off by default and survives a reset', () async {
+    final s = await makeService({});
+    expect(s.reduceEffects, isFalse);
+    await s.setReduceEffects(true);
+    await s.resetProgress();
+    expect(s.reduceEffects, isTrue);
+  });
 }

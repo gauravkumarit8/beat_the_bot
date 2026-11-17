@@ -32,10 +32,10 @@ void main() {
     await pumpApp(tester);
 
     expect(find.text('ZED-9'), findsOneWidget);
-    // The TODAY strip scrolls sideways and builds only nearby tiles, so
-    // check the first ones (the dare and twist tiles sit further along).
-    expect(find.text('WEEKLY BOSS'), findsOneWidget);
+    // A brand-new player sees the simple Home: the chest and the dare only.
     expect(find.text('DAILY CHEST'), findsOneWidget);
+    expect(find.text("ZED'S DARE"), findsOneWidget);
+    expect(find.text('WEEKLY BOSS'), findsNothing);
     expect(find.textContaining('ROOKIE'), findsWidgets);
     expect(find.text('Reflex'), findsOneWidget);
   });
@@ -173,5 +173,15 @@ void main() {
     expect(find.text('Math Rush'), findsOneWidget);
     expect(find.text('Color Clash'), findsOneWidget);
     expect(find.textContaining('4 of 6'), findsOneWidget);
+  });
+
+  testWidgets('players with a few days behind them see the full Home',
+      (tester) async {
+    await pumpApp(tester, prefsValues: {
+      'onboarded': true,
+      'playDays': ['2026-10-01', '2026-10-02', '2026-10-03'],
+    });
+    expect(find.text('WEEKLY BOSS'), findsOneWidget);
+    expect(find.text('DAILY CHEST'), findsOneWidget);
   });
 }

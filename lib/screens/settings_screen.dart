@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
 
 import '../core/ads_service.dart';
+import '../core/fx.dart';
 import '../core/haptics.dart';
 import '../core/rank_service.dart';
 import '../core/sfx.dart';
@@ -49,6 +50,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ads == null) return;
     final needed = await ads.privacyOptionsRequired();
     if (mounted) setState(() => _adChoices = needed);
+  }
+
+  int _titleTaps = 0;
+  bool _insights = false;
+
+  Future<void> _setReduceFx(bool on) async {
+    await widget.rank.setReduceEffects(on);
+    Fx.animations = !on;
+    if (mounted) setState(() {});
   }
 
   Future<void> _setSound(bool on) async {
@@ -198,8 +208,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               )
             else
               const SizedBox(height: 12),
-            const Text('Settings',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              // Seven quick taps reveal the developer-only ad insights line.
+              onTap: () {
+                _titleTaps++;
+                if (_titleTaps >= 7 && !_insights) {
+                  setState(() => _insights = true);
+                }
+              },
+              child: const Text('Settings',
+                  style:
+                      TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
+            ),
             const SizedBox(height: 18),
             GlassPanel(
               child: Column(
@@ -209,6 +230,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: _setSound,
                     title: const Text('Sound effects'),
                     subtitle: const Text('Short sounds for answers and results',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13)),
+                  ),
+                  const Divider(height: 1, color: AppColors.line),
+                  SwitchListTile(
+                    value: widget.rank.reduceEffects,
+                    onChanged: _setReduceFx,
+                    title: const Text('Reduce effects'),
+                    subtitle: const Text(
+                        'Calmer visuals, easier on the battery. Fully applies next time you open the app.',
                         style:
                             TextStyle(color: AppColors.muted, fontSize: 13)),
                   ),
@@ -272,7 +303,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1, color: AppColors.line),
                   ],
-                  if (ads != null) ...[
+                  if (ads != null && _insights) ...[
                     ListTile(
                       title: const Text('Ad insights'),
                       subtitle: Text(

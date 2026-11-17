@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/ads_service.dart';
+import 'core/fx.dart';
 import 'core/haptics.dart';
 import 'core/sfx.dart';
 import 'core/rank_service.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
   final rank = RankService(prefs);
   Haptics.enabled = rank.vibrationOn;
   Sfx.enabled = rank.soundOn;
+  Fx.animations = !rank.reduceEffects;
   rank.onMatchResult = (won) => Sfx.play(won ? Sound.win : Sound.lose);
   ZedSkins.current = rank.activeSkin;
   final reminders = ReminderService();
