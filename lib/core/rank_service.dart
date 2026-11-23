@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'achievements.dart';
 import 'dare.dart';
 import 'weekly_goals.dart';
+import 'zed_streak.dart';
 import 'zed_skins.dart';
 import 'difficulty.dart';
 
@@ -91,6 +92,9 @@ class RankService {
 
   int get rankPoints => _prefs.getInt('rp') ?? 0;
   int get streak => _prefs.getInt('streak') ?? 0;
+
+  /// The hard streak: beat Zed in the Daily Gauntlet every single day.
+  ZedStreak get zedStreak => ZedStreak(_prefs);
   int get freezes => _prefs.getInt('freezes') ?? 0;
   Rank get rank => rankForPoints(rankPoints);
 
@@ -687,8 +691,23 @@ class RankService {
 
   // ---- Call this once each time the app opens -----------------------------
 
+  /// Spends shields or ends the Zed Streak after missed days, and queues a
+  /// short message so the player knows what happened.
+  Future<void> _settleZedStreak(DateTime now) async {
+    final settle = await zedStreak.settle(now);
+    if (settle.broken) {
+      await _queueNotice(
+          'Your ${ZedStreak.daysLabel(settle.lostLength)} Zed Streak is over. '
+          'Zed wins this one. Beat him today to start again.');
+    } else if (settle.shieldsUsed > 0) {
+      await _queueNotice(
+          'A shield saved your Zed Streak. Do not miss another day.');
+    }
+  }
+
   /// Returns null on first launch or when nothing changed today.
   Future<ReturnResult?> onAppOpen(DateTime now) async {
+    await _settleZedStreak(now);
     final today = _dateOnly(now);
     final last = _lastPlayed;
     if (last == null) {

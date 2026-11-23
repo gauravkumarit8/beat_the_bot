@@ -19,6 +19,7 @@ import '../core/rating_service.dart';
 import '../core/reminder_service.dart';
 import '../core/theme.dart';
 import '../games/memory/memory_screen.dart';
+import '../core/zed_streak.dart';
 import 'gauntlet_screen.dart';
 import 'progress_screen.dart';
 import 'settings_screen.dart';
@@ -926,6 +927,12 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final zedStreak = rank.zedStreak;
+    final zedDays = zedStreak.current(today);
+    final zedChip = zedStreak.beatToday(today)
+        ? 'ZED STREAK ${ZedStreak.daysLabel(zedDays).toUpperCase()} · SAFE TODAY'
+        : 'ZED STREAK ${ZedStreak.daysLabel(zedDays).toUpperCase()} · BEAT ZED TODAY';
     final subtitle = gauntletScore == null
         ? '6 games · same puzzles for everyone today'
         : 'Today: $gauntletScore points · tap to play again';
@@ -989,7 +996,8 @@ class _HeroCard extends StatelessWidget {
               ],
             ),
             if (rank.revengeReady ||
-                rank.winStreak + 1 >= RankService.hotStreakFrom) ...[
+                rank.winStreak + 1 >= RankService.hotStreakFrom ||
+                zedDays > 0) ...[
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,
@@ -997,6 +1005,7 @@ class _HeroCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
+                    if (zedDays > 0) _StatusChip(zedChip),
                     if (rank.revengeReady)
                       const _StatusChip(
                           'REVENGE BONUS +${RankService.revengeBonus} RP'),

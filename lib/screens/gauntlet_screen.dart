@@ -5,6 +5,7 @@ import '../core/ads_service.dart';
 import '../core/game_result.dart';
 import '../core/rank_service.dart';
 import '../core/theme.dart';
+import '../core/zed_streak.dart';
 import '../games/memory/memory_screen.dart';
 import '../games/pattern/pattern_screen.dart';
 import '../games/precision/precision_screen.dart';
@@ -55,6 +56,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   bool _done = false;
   GauntletReward? _reward;
   bool _doubled = false;
+  ZedStreakResult? _zedStreak;
 
   Widget _screenFor(int i, int seed) {
     switch (i) {
@@ -89,6 +91,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _done = false;
       _reward = null;
       _doubled = false;
+      _zedStreak = null;
     });
     for (var i = 0; i < _names.length; i++) {
       final result = await Navigator.of(context).push<GameResult>(
@@ -105,10 +108,13 @@ class _GauntletScreenState extends State<GauntletScreen> {
     final reward =
         await widget.rank.onGauntletDone(DateTime.now(), _wins, _total,
             games: _names.length);
+    final streak = await widget.rank.zedStreak
+        .onGauntletResult(DateTime.now(), beatZed: _wins >= _winTarget);
     widget.ads?.onMatchFinished();
     if (!mounted) return;
     setState(() {
       _reward = reward;
+      _zedStreak = streak;
       _done = true;
     });
   }
@@ -132,9 +138,13 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
   Future<void> _copyResult() async {
     final now = DateTime.now();
+    final days = _zedStreak?.current ?? 0;
+    final streakText =
+        days >= 2 ? ' Zed Streak: ${ZedStreak.daysLabel(days)}.' : '';
     final text =
         'Beat the Bot, Daily Gauntlet ${now.day} ${_months[now.month - 1]}: '
-        '$_total points, beat Zed in $_wins of ${_names.length} games.';
+        '$_total points, beat Zed in $_wins of ${_names.length} games.'
+        '$streakText';
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -194,6 +204,8 @@ class _GauntletScreenState extends State<GauntletScreen> {
         'Six games in a row against Zed. Beat him in 4 of 6 to win.',
         style: TextStyle(color: AppColors.muted, fontSize: 16, height: 1.4),
       ),
+      const SizedBox(height: 12),
+      _zedStreakNote(),
       const SizedBox(height: 18),
       for (var i = 0; i < _names.length; i++)
         Padding(
@@ -275,6 +287,72 @@ class _GauntletScreenState extends State<GauntletScreen> {
     );
   }
 
+  /// The Zed Streak line on the intro screen.
+  Widget _zedStreakNote() {
+    final now = DateTime.now();
+    final zs = widget.rank.zedStreak;
+    final days = zs.current(now);
+    final String text;
+    if (days == 0) {
+      text = 'ZED STREAK: beat Zed every day to build it. '
+          'Miss a day and it goes back to zero.';
+    } else if (zs.beatToday(now)) {
+      text = 'ZED STREAK: ${ZedStreak.daysLabel(days)}. Safe for today.';
+    } else {
+      text = 'ZED STREAK: ${ZedStreak.daysLabel(days)}. '
+          'Beat Zed today or lose it.';
+    }
+    final shields = zs.shields;
+    return Text(
+      shields > 0 ? '$text  Shields: $shields.' : text,
+      style: const TextStyle(
+          color: AppColors.amber,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          height: 1.4),
+    );
+  }
+
+  /// The Zed Streak lines on the result screen.
+  List<Widget> _zedStreakResult() {
+    final z = _zedStreak;
+    if (z == null) return const <Widget>[];
+    final beat = _wins >= _winTarget;
+    Widget line(String text, Color color, {bool bold = true}) => Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: color,
+                  fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+        );
+    final lines = <Widget>[const SizedBox(height: 10)];
+    if (z.increased) {
+      lines.add(line('ZED STREAK: ${ZedStreak.daysLabel(z.current)}',
+          AppColors.lime));
+      if (z.isNewBest) {
+        lines.add(line('New personal best!', AppColors.amber));
+      }
+      if (z.milestone != null) {
+        lines.add(line('Milestone: ${z.milestone} days in a row.',
+            AppColors.amber));
+      }
+      if (z.shieldEarned) {
+        lines.add(line('Shield earned. It saves you from one missed day.',
+            AppColors.amber));
+      }
+    } else if (beat) {
+      lines.add(line('Zed Streak: ${ZedStreak.daysLabel(z.current)}. '
+          'Today is already counted.', AppColors.muted, bold: false));
+    } else if (z.current > 0) {
+      lines.add(line(
+          'Zed won this run. Play again and beat him today, or your '
+          '${ZedStreak.daysLabel(z.current)} Zed Streak ends tonight.',
+          AppColors.coralSoft));
+    }
+    return lines;
+  }
+
   List<Widget> _resultView() {
     final reward = _reward;
     final rankUp = reward?.rankUp;
@@ -315,6 +393,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
             style: const TextStyle(
                 color: AppColors.amber, fontWeight: FontWeight.w700)),
       ],
+      ..._zedStreakResult(),
       if (widget.ads != null &&
           reward != null &&
           reward.firstToday &&
