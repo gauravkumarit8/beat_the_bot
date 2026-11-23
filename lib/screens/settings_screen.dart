@@ -8,6 +8,7 @@ import '../core/rank_service.dart';
 import '../core/sfx.dart';
 import '../core/reminder_service.dart';
 import '../core/theme.dart';
+import '../games/quiz/quiz_specs.dart';
 import '../widgets/fx_widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -54,6 +55,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   int _titleTaps = 0;
   bool _insights = false;
+
+  Future<void> _setColorBlindHelp(bool on) async {
+    await widget.rank.setColorBlindHelp(on);
+    ColorClashSpec.markers = on;
+    if (mounted) setState(() {});
+  }
 
   Future<void> _setReduceFx(bool on) async {
     await widget.rank.setReduceEffects(on);
@@ -230,6 +237,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: _setSound,
                     title: const Text('Sound effects'),
                     subtitle: const Text('Short sounds for answers and results',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13)),
+                  ),
+                  const Divider(height: 1, color: AppColors.line),
+                  SwitchListTile(
+                    value: widget.rank.colorBlindHelp,
+                    onChanged: _setColorBlindHelp,
+                    title: const Text('Colour-blind help'),
+                    subtitle: const Text(
+                        'Adds a shape to each colour in Color Clash',
                         style:
                             TextStyle(color: AppColors.muted, fontSize: 13)),
                   ),

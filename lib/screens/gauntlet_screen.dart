@@ -37,6 +37,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
   /// Wins needed to beat Zed (two thirds of the games).
   static const int _winTarget = 4;
+  static const String playLink =
+      'https://play.google.com/store/apps/details?id=com.grv.beat_the_bot';
+
   static const List<String> _months = [
     'Jan',
     'Feb',
@@ -141,10 +144,12 @@ class _GauntletScreenState extends State<GauntletScreen> {
     final days = _zedStreak?.current ?? 0;
     final streakText =
         days >= 2 ? ' Zed Streak: ${ZedStreak.daysLabel(days)}.' : '';
+    final grid = [for (final r in _results) r.won ? '🟩' : '🟥'].join();
     final text =
-        'Beat the Bot, Daily Gauntlet ${now.day} ${_months[now.month - 1]}: '
-        '$_total points, beat Zed in $_wins of ${_names.length} games.'
-        '$streakText';
+        'Beat the Bot · Daily Gauntlet ${now.day} ${_months[now.month - 1]}\n'
+        '$grid  $_wins/${_names.length}\n'
+        '$_total points$streakText\n'
+        'Can you beat Zed? $playLink';
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

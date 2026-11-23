@@ -589,6 +589,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 damage: rank.bossDamage(now),
                                 total: RankService.bossHp,
                                 reward: RankService.bossReward,
+                                weekend: now.weekday >= DateTime.saturday,
                               ),
                               const SizedBox(width: 12),
                             ],
@@ -1267,12 +1268,16 @@ class _BossTile extends StatelessWidget {
     required this.damage,
     required this.total,
     required this.reward,
+    this.weekend = false,
   });
 
   final String name;
   final int damage;
   final int total;
   final int reward;
+
+  /// Saturday and Sunday: wins hurt the boss twice as much.
+  final bool weekend;
 
   @override
   Widget build(BuildContext context) {
@@ -1284,7 +1289,7 @@ class _BossTile extends StatelessWidget {
           SnackBar(
             content: Text(dead
                 ? '$name is down. A new boss arrives on Monday.'
-                : 'Every win hurts the boss: Easy 5, Medium 10, Hard 15. '
+                : 'Every win hurts the boss: Easy 5, Medium 10, Hard 15, doubled at the weekend. '
                     'Defeat it this week for +$reward RP and a streak freeze.'),
           ),
         );
@@ -1325,7 +1330,9 @@ class _BossTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                dead ? 'DEFEATED' : 'HP ${total - damage} / $total',
+                dead
+                    ? 'DEFEATED'
+                    : 'HP ${total - damage} / $total${weekend ? ' · x2 WEEKEND' : ''}',
                 style: _mono(
                     size: 12, color: accent, weight: FontWeight.w800),
               ),

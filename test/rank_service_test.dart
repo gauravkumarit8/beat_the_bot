@@ -600,7 +600,8 @@ void main() {
     final b = twistForDay(DateTime(2026, 10, 22, 23));
     expect(a.id, b.id);
     final ids = {
-      for (var d = 0; d < 3; d++) twistForDay(DateTime(2026, 10, 22 + d)).id,
+      for (var d = 0; d < zedTwists.length; d++)
+        twistForDay(DateTime(2026, 10, 22 + d)).id,
     };
     expect(ids.length, zedTwists.length);
   });
@@ -666,5 +667,23 @@ void main() {
     await s.setReduceEffects(true);
     await s.resetProgress();
     expect(s.reduceEffects, isTrue);
+  });
+
+  test('weekend wins hurt the boss twice as much', () async {
+    final s = await makeService({});
+    final saturday = DateTime(2026, 10, 24);
+    await s.recordResult('reflex', Level.hard, true, now: saturday);
+    expect(s.bossDamage(saturday), 30);
+    final monday = DateTime(2026, 10, 26);
+    await s.recordResult('reflex', Level.hard, true, now: monday);
+    expect(s.bossDamage(monday), 15);
+  });
+
+  test('colour-blind help is off by default and survives a reset', () async {
+    final s = await makeService({});
+    expect(s.colorBlindHelp, isFalse);
+    await s.setColorBlindHelp(true);
+    await s.resetProgress();
+    expect(s.colorBlindHelp, isTrue);
   });
 }

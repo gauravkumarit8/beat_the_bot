@@ -139,10 +139,13 @@ class MathRushSpec extends QuizSpec {
 }
 
 class ClashColor {
-  const ClashColor(this.name, this.color);
+  const ClashColor(this.name, this.color, this.mark);
 
   final String name;
   final Color color;
+
+  /// A shape that stands for this colour when colour-blind help is on.
+  final String mark;
 }
 
 /// The Stroop test: the word says one colour, the ink is another.
@@ -150,12 +153,16 @@ class ColorClashSpec extends QuizSpec {
   const ColorClashSpec();
 
   static const List<ClashColor> palette = [
-    ClashColor('RED', Color(0xFFFF5A5A)),
-    ClashColor('BLUE', Color(0xFF5B9BFF)),
-    ClashColor('GREEN', Color(0xFF55E07A)),
-    ClashColor('YELLOW', Color(0xFFFFD84D)),
-    ClashColor('PURPLE', Color(0xFFB07CFF)),
+    ClashColor('RED', Color(0xFFFF5A5A), '●'),
+    ClashColor('BLUE', Color(0xFF5B9BFF), '■'),
+    ClashColor('GREEN', Color(0xFF55E07A), '▲'),
+    ClashColor('YELLOW', Color(0xFFFFD84D), '◆'),
+    ClashColor('PURPLE', Color(0xFFB07CFF), '★'),
   ];
+
+  /// Colour-blind help: the word shows a shape for its ink colour, and each
+  /// answer carries the same shape. Set from Settings.
+  static bool markers = false;
 
   @override
   String get id => 'color';
@@ -207,10 +214,13 @@ class ColorClashSpec extends QuizSpec {
     final target = askWord ? word : ink;
     final options = [...colors]..shuffle(rng);
     return QuizQuestion(
-      prompt: word.name,
+      prompt: markers ? '${word.name} ${ink.mark}' : word.name,
       promptColor: ink.color,
       hint: askWord ? 'Tap what the WORD says' : 'Tap the INK colour',
-      options: [for (final c in options) QuizOption(c.name)],
+      options: [
+        for (final c in options)
+          QuizOption(markers ? '${c.mark} ${c.name}' : c.name),
+      ],
       answer: options.indexWhere((c) => c.name == target.name),
     );
   }

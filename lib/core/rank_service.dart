@@ -122,6 +122,10 @@ class RankService {
   bool get vibrationOn => _prefs.getBool('vibration') ?? true;
   bool get soundOn => _prefs.getBool('sound') ?? true;
 
+  /// Adds a shape to each colour in Color Clash.
+  bool get colorBlindHelp => _prefs.getBool('cbHelp') ?? false;
+  Future<void> setColorBlindHelp(bool on) => _prefs.setBool('cbHelp', on);
+
   /// Calmer visuals for older phones and battery life.
   bool get reduceEffects => _prefs.getBool('reduceFx') ?? false;
   Future<void> setReduceEffects(bool on) => _prefs.setBool('reduceFx', on);
@@ -156,6 +160,7 @@ class RankService {
       'vibration',
       'sound',
       'reduceFx',
+      'cbHelp',
       'difficulty',
       'onboarded',
       'reminderOn',
@@ -246,6 +251,10 @@ class RankService {
     'Zed Omega',
     'Zed Zero',
     'Zed Nova',
+    'Zed Apex',
+    'Zed Vortex',
+    'Zed Titan',
+    'Zed Phantom',
   ];
 
   /// This week's boss. Everyone gets the same one.
@@ -276,7 +285,9 @@ class RankService {
     }
     final before = _prefs.getInt('bossDamage') ?? 0;
     if (before >= bossHp) return;
-    final after = before + 5 + 5 * played.index;
+    // Weekends hurt twice as much, a reason to play on Saturday and Sunday.
+    final weekend = now.weekday >= DateTime.saturday;
+    final after = before + (5 + 5 * played.index) * (weekend ? 2 : 1);
     await _prefs.setInt('bossDamage', after);
     if (after >= bossHp) {
       await _prefs.setInt('bossKills', bossKills + 1);

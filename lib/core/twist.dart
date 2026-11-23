@@ -40,6 +40,26 @@ const List<ZedTwist> zedTwists = [
     extraRounds: 4,
   ),
   ZedTwist(
+    id: 'sprint',
+    title: 'Sprint',
+    rule: 'Questions come 20% faster, and there are two extra.',
+    timeFactor: 0.8,
+    extraRounds: 2,
+  ),
+  ZedTwist(
+    id: 'ironman',
+    title: 'Iron Man',
+    rule: 'Six extra questions. Pace yourself.',
+    extraRounds: 6,
+  ),
+  ZedTwist(
+    id: 'sharp',
+    title: 'Zed on form',
+    rule: 'Zed is sharper today, but you get 15% more time.',
+    timeFactor: 1.15,
+    zedAccuracyDelta: 0.08,
+  ),
+  ZedTwist(
     id: 'offday',
     title: "Zed's off day",
     rule: 'Zed makes more mistakes today. Do not waste it.',

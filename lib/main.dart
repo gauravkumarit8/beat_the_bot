@@ -7,6 +7,7 @@ import 'core/ads_service.dart';
 import 'core/fx.dart';
 import 'core/haptics.dart';
 import 'core/sfx.dart';
+import 'games/quiz/quiz_specs.dart';
 import 'core/rank_service.dart';
 import 'core/reminder_service.dart';
 import 'core/zed_skins.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
   Haptics.enabled = rank.vibrationOn;
   Sfx.enabled = rank.soundOn;
   Fx.animations = !rank.reduceEffects;
+  ColorClashSpec.markers = rank.colorBlindHelp;
   rank.onMatchResult = (won) => Sfx.play(won ? Sound.win : Sound.lose);
   ZedSkins.current = rank.activeSkin;
   final reminders = ReminderService();
