@@ -29,7 +29,15 @@ class ZedStreakResult {
     required this.shieldEarned,
     required this.milestone,
     required this.isNewBest,
+    required this.attemptsLeft,
+    required this.limitHit,
   });
+
+  /// Counting runs still left today (see [ZedStreak.maxAttempts]).
+  final int attemptsLeft;
+
+  /// True when the player beat Zed, but too late in the day's runs to count.
+  final bool limitHit;
 
   /// The streak after this Gauntlet.
   final int current;
@@ -55,8 +63,10 @@ class ZedStreakResult {
 /// one for every seventh day, with at most [maxShields] saved up. A shield
 /// covers one missed day. Everything is stored on the phone.
 ///
-/// A Gauntlet can be replayed on the same day, so a loss followed by a win
-/// still counts. Only a day that ends without a win breaks the streak.
+/// A Gauntlet can be replayed on the same day, but the puzzles are the same
+/// all day, so only the first [maxAttempts] runs of a day can count. A loss
+/// followed by a win on the second run still counts. Only a day that ends
+/// without a counting win breaks the streak.
 class ZedStreak {
   ZedStreak(this._prefs);
 
@@ -64,12 +74,17 @@ class ZedStreak {
 
   static const int shieldEvery = 7;
   static const int maxShields = 2;
+
+  /// Runs per day that can add to the streak. Later runs are just for fun.
+  static const int maxAttempts = 2;
   static const List<int> milestones = [3, 7, 14, 30, 60, 100, 365];
 
   static const String _kCount = 'zs_count';
   static const String _kBest = 'zs_best';
   static const String _kLast = 'zs_last';
   static const String _kShields = 'zs_shields';
+  static const String _kTryDay = 'zs_tryDay';
+  static const String _kTries = 'zs_tries';
 
   static DateTime _dateOnly(DateTime d) => DateTime.utc(d.year, d.month, d.day);
 
@@ -106,6 +121,16 @@ class ZedStreak {
     if (gap <= 1) return count;
     final missed = gap - 1;
     return missed <= shields ? count : 0;
+  }
+
+  /// Counting runs the player has used today.
+  int attemptsUsed(DateTime now) =>
+      _prefs.getString(_kTryDay) == _key(now) ? (_prefs.getInt(_kTries) ?? 0) : 0;
+
+  /// Counting runs the player still has today.
+  int attemptsLeft(DateTime now) {
+    final left = maxAttempts - attemptsUsed(now);
+    return left < 0 ? 0 : left;
   }
 
   /// True when Zed has already been beaten today.
@@ -152,7 +177,14 @@ class ZedStreak {
     final count = _count;
     final alreadyCounted = count > 0 && _last == key;
 
-    if (!beatZed || alreadyCounted) {
+    // Every finished run uses one of today's counting runs.
+    final used = attemptsUsed(now) + 1;
+    await _prefs.setString(_kTryDay, key);
+    await _prefs.setInt(_kTries, used);
+    final left = attemptsLeft(now);
+    final tooLate = used > maxAttempts;
+
+    if (!beatZed || alreadyCounted || tooLate) {
       return ZedStreakResult(
         current: count,
         best: best,
@@ -160,6 +192,8 @@ class ZedStreak {
         shieldEarned: false,
         milestone: null,
         isNewBest: false,
+        attemptsLeft: left,
+        limitHit: beatZed && !alreadyCounted && tooLate,
       );
     }
 
@@ -182,6 +216,8 @@ class ZedStreak {
       shieldEarned: earned,
       milestone: milestones.contains(next) ? next : null,
       isNewBest: oldBest > 0 && next > oldBest,
+      attemptsLeft: left,
+      limitHit: false,
     );
   }
 }

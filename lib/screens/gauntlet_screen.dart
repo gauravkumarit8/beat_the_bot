@@ -303,8 +303,12 @@ class _GauntletScreenState extends State<GauntletScreen> {
           'Beat Zed today or lose it.';
     }
     final shields = zs.shields;
+    final runs = zs.beatToday(now)
+        ? ''
+        : ' Counting runs left today: ${zs.attemptsLeft(now)} of ${ZedStreak.maxAttempts}.';
+    final full = '$text$runs';
     return Text(
-      shields > 0 ? '$text  Shields: $shields.' : text,
+      shields > 0 ? '$full  Shields: $shields.' : full,
       style: const TextStyle(
           color: AppColors.amber,
           fontWeight: FontWeight.w700,
@@ -341,14 +345,30 @@ class _GauntletScreenState extends State<GauntletScreen> {
         lines.add(line('Shield earned. It saves you from one missed day.',
             AppColors.amber));
       }
+    } else if (z.limitHit) {
+      lines.add(line(
+          'You beat Zed, but only the first ${ZedStreak.maxAttempts} runs '
+          'each day count for the streak. Try again tomorrow.',
+          AppColors.coralSoft));
     } else if (beat) {
       lines.add(line('Zed Streak: ${ZedStreak.daysLabel(z.current)}. '
           'Today is already counted.', AppColors.muted, bold: false));
-    } else if (z.current > 0) {
+    } else if (z.current > 0 && z.attemptsLeft > 0) {
       lines.add(line(
           'Zed won this run. Play again and beat him today, or your '
+          '${ZedStreak.daysLabel(z.current)} Zed Streak ends tonight. '
+          '${z.attemptsLeft} counting run left.',
+          AppColors.coralSoft));
+    } else if (z.current > 0) {
+      lines.add(line(
+          'Zed won, and no counting runs are left today. Your '
           '${ZedStreak.daysLabel(z.current)} Zed Streak ends tonight.',
           AppColors.coralSoft));
+    } else if (z.attemptsLeft == 0) {
+      lines.add(line(
+          'No counting runs left today. Start your Zed Streak tomorrow.',
+          AppColors.muted,
+          bold: false));
     }
     return lines;
   }

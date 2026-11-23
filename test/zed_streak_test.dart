@@ -176,4 +176,41 @@ void main() {
     expect(rank.zedStreak.best, 0);
     expect(rank.zedStreak.shields, 0);
   });
+
+  test('only the first two runs of a day can count', () async {
+    final z = await makeStreak({});
+    await z.onGauntletResult(DateTime(2026, 10, 10), beatZed: true);
+    final day = DateTime(2026, 10, 11);
+    final a = await z.onGauntletResult(day, beatZed: false);
+    expect(a.attemptsLeft, 1);
+    final b = await z.onGauntletResult(day, beatZed: false);
+    expect(b.attemptsLeft, 0);
+    expect(b.limitHit, isFalse); // a loss is just a loss
+    final c = await z.onGauntletResult(day, beatZed: true);
+    expect(c.increased, isFalse);
+    expect(c.limitHit, isTrue);
+    expect(c.current, 1);
+    expect(z.beatToday(day), isFalse);
+  });
+
+  test('a win on the second run still counts', () async {
+    final z = await makeStreak({});
+    final day = DateTime(2026, 10, 10);
+    await z.onGauntletResult(day, beatZed: false);
+    final r = await z.onGauntletResult(day, beatZed: true);
+    expect(r.increased, isTrue);
+    expect(r.limitHit, isFalse);
+    expect(r.current, 1);
+  });
+
+  test('the counting runs come back the next day', () async {
+    final z = await makeStreak({});
+    final day = DateTime(2026, 10, 10);
+    await z.onGauntletResult(day, beatZed: false);
+    await z.onGauntletResult(day, beatZed: false);
+    expect(z.attemptsLeft(day), 0);
+    expect(z.attemptsLeft(DateTime(2026, 10, 11)), ZedStreak.maxAttempts);
+    final r = await z.onGauntletResult(DateTime(2026, 10, 11), beatZed: true);
+    expect(r.increased, isTrue);
+  });
 }
