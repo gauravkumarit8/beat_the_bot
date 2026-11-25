@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/ads_service.dart';
+import 'core/error_log.dart';
 import 'core/fx.dart';
 import 'core/haptics.dart';
 import 'core/sfx.dart';
@@ -18,6 +20,16 @@ import 'screens/onboarding_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  // Remember unexpected errors on this phone so testers can send them.
+  ErrorLog.attach(prefs);
+  FlutterError.onError = (details) {
+    ErrorLog.record(details.exception, details.stack);
+    FlutterError.presentError(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    ErrorLog.record(error, stack);
+    return true;
+  };
   final ads = AdsService(prefs);
   unawaited(ads.init());
   final rank = RankService(prefs);
@@ -50,6 +62,12 @@ class BeatTheBotApp extends StatelessWidget {
       title: 'Beat the Bot',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
+      // Very large system fonts would break the layouts, so cap the scaling.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: 1.0,
+        maxScaleFactor: 1.35,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: rank.onboarded
           ? MainShell(rank: rank, ads: ads, reminders: reminders)
           : OnboardingScreen(rank: rank, ads: ads, reminders: reminders),

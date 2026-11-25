@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:in_app_review/in_app_review.dart';
 
 import '../core/ads_service.dart';
+import '../core/error_log.dart';
 import '../core/fx.dart';
 import '../core/haptics.dart';
 import '../core/rank_service.dart';
@@ -51,6 +53,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ads == null) return;
     final needed = await ads.privacyOptionsRequired();
     if (mounted) setState(() => _adChoices = needed);
+  }
+
+  static const String _howText =
+      'RANK. Win matches to earn rank points (RP) and climb from Rookie to Legend. '
+      'Miss days and you slowly lose points, after one free grace day.\n\n'
+      'DAILY CHEST. Play a match, beat Zed\'s dare and finish the Daily Gauntlet. '
+      'Then open the chest for RP, and sometimes a streak freeze.\n\n'
+      'ZED\'S DARE. One game a day. Beat Zed in it for bonus RP.\n\n'
+      'ZED\'S TWIST. A rule change for the quiz games each day, like less time '
+      'or extra questions. Your first win under it pays a bonus.\n\n'
+      'WEEKLY BOSS. Every win hurts the boss: Easy 5, Medium 10, Hard 15, '
+      'doubled at the weekend. Defeat it for RP and a freeze.\n\n'
+      'DAILY GAUNTLET. Six games, one score out of 1000, the same puzzles for '
+      'everyone today. Beat Zed in 4 of 6.\n\n'
+      'ZED STREAK. Beat Zed in the Gauntlet every day. Only your first two runs '
+      'each day count. Every 7th day earns a shield that saves one missed day.\n\n'
+      'STREAK FREEZE. Protects your daily streak for one missed day.\n\n'
+      'CHALLENGE A FRIEND. After a win, share the code. Your friend enters it '
+      'from Home to play the same puzzles.';
+
+  Future<void> _howItWorks() {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('How it works'),
+        content: const SingleChildScrollView(
+          child: Text(_howText, style: TextStyle(height: 1.45)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('GOT IT'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reportProblem() async {
+    await Clipboard.setData(ClipboardData(text: ErrorLog.report()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied. Paste it in a message to the developer.'),
+      ),
+    );
   }
 
   int _titleTaps = 0;
@@ -331,6 +379,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1, color: AppColors.line),
                   ],
+                  ListTile(
+                    title: const Text('How it works'),
+                    subtitle: const Text('Ranks, chest, boss, streaks and more',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13)),
+                    trailing: const Icon(Icons.chevron_right_rounded,
+                        color: AppColors.muted),
+                    onTap: _howItWorks,
+                  ),
+                  const Divider(height: 1, color: AppColors.line),
+                  ListTile(
+                    title: const Text('Report a problem'),
+                    subtitle: const Text(
+                        'Copies details you can send to the developer',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13)),
+                    trailing: const Icon(Icons.chevron_right_rounded,
+                        color: AppColors.muted),
+                    onTap: _reportProblem,
+                  ),
+                  const Divider(height: 1, color: AppColors.line),
                   ListTile(
                     title: const Text('Rate Beat the Bot'),
                     subtitle: const Text('Opens the Play Store',
